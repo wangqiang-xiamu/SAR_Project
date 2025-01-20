@@ -1,130 +1,114 @@
 import os
+from utils import SARDataset
+from torchvision.models import ResNet18_Weights
 import torch
 from torch.utils.data import Dataset, DataLoader
-from torchvision import transforms, models
+from torchvision import transforms,models
 import torch.nn as nn
 import torch.optim as optim
 from PIL import Image
-from torchvision.models import resnet18, ResNet18_Weights
+from methods.mixup import mixup_data
+from methods.fixmatch import fixmatch_criterion
+# MixUp + FixMatch组合：在传统MixUp的基础上加入FixMatch，可以更好地利用未标记数据。
+# MixUp通过增强训练数据的多样性，而FixMatch通过伪标签和一致性损失进一步加强模型的泛化能力。
 
-# 数据增强示例：包括调整大小、转换为Tensor和归一化
+# 数据增强示例：包括调整大小、转换为Tensor和归一化，将图像转化为神经网络模型可以处理的格式。
+# ResNet18，预训练的模型（ResNet18）基于三通道的图像进行训练的。
+# 将输入图像从灰度图（单通道）转换为三通道的RGB图像。
+# 数据增强，包括调整大小、转换为Tensor和归一化
 transform = transforms.Compose([
     transforms.Grayscale(num_output_channels=3),  # 将灰度图转换为3通道RGB图像
     transforms.Resize((224, 224)),  # 调整图像大小为224x224
     transforms.ToTensor(),  # 转换为Tensor
-    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # 使用预训练模型的标准化
+    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # 预训练模型的标准化
 ])
 
-# 类别名称示例，和数据集的文件夹结构一致
 class_names = ['2S1', 'BMP2', 'BRDM_2', 'BTR60', 'BTR70', 'D7', 'T62', 'T72', 'ZIL131', 'ZSU_23_4']
 
-
-# 自定义数据集类
-class SARDataset(Dataset):
-    def __init__(self, img_dir, class_names, transform=None):
-        self.img_dir = img_dir
-        self.class_names = class_names
-        self.transform = transform
-
-        self.img_paths = []
-        self.labels = []
-
-        for label, class_name in enumerate(self.class_names):
-            class_dir = os.path.join(self.img_dir, class_name)
-            if os.path.isdir(class_dir):
-                for filename in os.listdir(class_dir):
-                    img_path = os.path.join(class_dir, filename)
-                    if img_path.endswith(('.jpg', '.png', '.jpeg')):
-                        self.img_paths.append(img_path)
-                        self.labels.append(label)
-
-        if len(self.img_paths) == 0:
-            raise ValueError(f"No images found in {img_dir}")
-
-    def __len__(self):
-        return len(self.img_paths)
-
-    def __getitem__(self, idx):
-        img_path = self.img_paths[idx]
-        label = self.labels[idx]
-        image = Image.open(img_path)
-        if self.transform:
-            image = self.transform(image)
-        return image, label
-
 def main():
-    # MSTAR数据集的训练和测试集文件夹路径
-    train_img_dir = './data/MSTAR/mstar-train'  # 训练数据集路径
-    test_img_dir = './data/MSTAR/mstar-test'  # 测试数据集路径
+    train_img_dir = './data/MSTAR/mstar-train'  # 有标签的训练数据
+    test_img_dir = './data/MSTAR/mstar-test'  # 测试数据
+    unlabeled_img_dir = './data/MSTAR/mstar-unlabeled'  # 无标签数据路径（如果有）
 
-    # 创建训练数据集实例
+    # 创建训练数据集和测试数据集
     train_dataset = SARDataset(img_dir=train_img_dir, class_names=class_names, transform=transform)
-
-    # 创建测试数据集实例
     test_dataset = SARDataset(img_dir=test_img_dir, class_names=class_names, transform=transform)
 
-    # 创建训练数据加载器
+    # 创建无标签数据集
+    unlabeled_dataset = SARDataset(img_dir=unlabeled_img_dir, class_names=class_names, transform=transform, is_unlabeled=True)
+
+    # 创建数据加载器
     train_dataloader = DataLoader(train_dataset, batch_size=32, shuffle=True, num_workers=6, pin_memory=True)
-
-    # 创建测试数据加载器
     test_dataloader = DataLoader(test_dataset, batch_size=32, shuffle=False, num_workers=6, pin_memory=True)
+    unlabeled_dataloader = DataLoader(unlabeled_dataset, batch_size=32, shuffle=True, num_workers=6, pin_memory=True)
 
-    # 加载预训练的ResNet18模型
-    # 加载ResNet18模型，使用最新的预训练权重
-    model = resnet18(weights=ResNet18_Weights.DEFAULT)
+    # 加载ResNet18模型
+    # 使用新的 weights 参数加载模型
+    # ResNet18_Weights.DEFAULT: 使用最新推荐的预训练权重。
+    model = models.resnet18(weights=ResNet18_Weights.IMAGENET1K_V1)
 
-    # 修改最后的全连接层，以适应你的数据集
-    model.fc = nn.Linear(model.fc.in_features, len(class_names))  # 这里的 len(class_names) 是你的类别数
+    model.fc = nn.Linear(model.fc.in_features, len(class_names))  # 修改输出层
 
-    # 将模型移动到 GPU（如果可用）
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = model.to(device)
 
     # 定义损失函数和优化器
-    criterion = nn.CrossEntropyLoss()  # 分类任务常用的损失函数
-    optimizer = optim.Adam(model.parameters(), lr=0.001)  # 使用Adam优化器
+    criterion = nn.CrossEntropyLoss()  # 有标签数据的损失函数
+    optimizer = optim.Adam(model.parameters(), lr=0.001)  # Adam优化器
 
     # 训练过程
-    num_epochs = 10  # 设置训练轮数
+    num_epochs = 10
     for epoch in range(num_epochs):
-        print(f"Starting epoch {epoch + 1}")
-        model.train()  # 设置模型为训练模式
+        model.train()
         running_loss = 0.0
         correct = 0
         total = 0
-        for i, (images, labels) in enumerate(train_dataloader):
-            print(f"Loading batch {i + 1}")
+
+        for (images, labels) in train_dataloader:
             images, labels = images.to(device), labels.to(device)
 
             # 清零优化器的梯度
             optimizer.zero_grad()
 
+            # MixUp数据增强
+            mixed_images, mixed_labels = mixup_data(images, labels, alpha=1.0)  # 你可以调整MixUp的参数
+
             # 前向传播
-            outputs = model(images)
+            outputs = model(mixed_images)
+            loss = criterion(outputs, mixed_labels)
 
-            # 计算损失
-            loss = criterion(outputs, labels)
-
-            # 反向传播并更新权重
+            # 反向传播
             loss.backward()
             optimizer.step()
 
-            # 统计损失和准确度
             running_loss += loss.item()
             _, predicted = torch.max(outputs.data, 1)
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
 
-        # 输出每一轮的损失和准确度
         epoch_loss = running_loss / len(train_dataloader)
         epoch_acc = correct / total * 100
-        print(f"Epoch [{epoch + 1}/{num_epochs}], Loss: {epoch_loss:.4f}, Accuracy: {epoch_acc:.2f}%")
+        print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {epoch_loss:.4f}, Accuracy: {epoch_acc:.2f}%")
 
-    # 保存训练好的模型
-    torch.save(model.state_dict(), '.pth')
+        # 使用FixMatch进行无标签数据训练
+        model.eval()
+        with torch.no_grad():
+            for (unlabeled_images, _) in unlabeled_dataloader:
+                unlabeled_images = unlabeled_images.to(device)
 
-    # 测试模型
-    model.eval()  # 设置模型为评估模式
+                # 利用FixMatch生成伪标签并计算一致性损失
+                pseudo_labels = fixmatch_criterion(model, unlabeled_images)  # 你需要实现这个函数
+                # 这里将伪标签加入优化过程
+                optimizer.zero_grad()
+                loss = criterion(pseudo_labels, labels)
+                loss.backward()
+                optimizer.step()
+
+    # 保存模型
+    torch.save(model.state_dict(), 'resnet18_model.pth')
+
+    # 测试过程
+    model.eval()
     correct = 0
     total = 0
     with torch.no_grad():
@@ -135,7 +119,6 @@ def main():
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
 
-    # 输出测试准确度
     test_acc = correct / total * 100
     print(f"Test Accuracy: {test_acc:.2f}%")
 
