@@ -26,8 +26,11 @@ transform = transforms.Compose([
 class_names = ['2S1', 'BMP2', 'BRDM_2', 'BTR60', 'BTR70', 'D7', 'T62', 'T72', 'ZIL131', 'ZSU_23_4']
 
 def main():
-    train_img_dir = './data/MSTAR/mstar-train'  # 有标签的训练数据
-    test_img_dir = './data/MSTAR/mstar-test'  # 测试数据
+    #测试
+    train_img_dir = './data/MSTAR/mstar-train-test'  # 有标签的训练数据
+    test_img_dir = './data/MSTAR/mstar-test-test'  # 测试数据
+    # train_img_dir = './data/MSTAR/mstar-train'  # 有标签的训练数据
+    # test_img_dir = './data/MSTAR/mstar-test'  # 测试数据
     unlabeled_img_dir = './data/MSTAR/mstar-unlabeled'  # 无标签数据路径（如果有）
 
     # 创建训练数据集和测试数据集
@@ -71,8 +74,7 @@ def main():
             optimizer.zero_grad()
 
             # MixUp数据增强
-            mixed_images, mixed_labels = mixup_data(images, labels, alpha=1.0)  # 你可以调整MixUp的参数
-
+            mixed_images, mixed_labels, lam = mixup_data(images, labels, alpha=1.0)
             # 前向传播
             outputs = model(mixed_images)
             loss = criterion(outputs, mixed_labels)
@@ -93,7 +95,7 @@ def main():
         # 使用FixMatch进行无标签数据训练
         model.eval()
         with torch.no_grad():
-            for (unlabeled_images, _) in unlabeled_dataloader:
+            for unlabeled_images in unlabeled_dataloader:  # 直接获取图像
                 unlabeled_images = unlabeled_images.to(device)
 
                 # 利用FixMatch生成伪标签并计算一致性损失
