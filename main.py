@@ -121,7 +121,7 @@ def main():
         print(f"Epoch [{epoch + 1}/{num_epochs}], Loss: {epoch_loss:.4f}, Accuracy: {epoch_acc:.2f}%")
 
     # 保存训练好的模型
-    torch.save(model.state_dict(), 'sar_model.pth')
+    torch.save(model.state_dict(), '.pth')
 
     # 测试模型
     model.eval()  # 设置模型为评估模式
