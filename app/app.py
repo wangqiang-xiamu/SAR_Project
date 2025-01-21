@@ -51,8 +51,8 @@ def predict():
 
         # 获取预测类别的名称
         predicted_class = class_names[prediction]
-
-        return jsonify({'prediction': predicted_class})  # 返回预测类别名称
+        # 返回结果页面，显示识别信息
+        return render_template('result.html', class_name=predicted_class)
 
     except Exception as e:
         return jsonify({'error': str(e)})
