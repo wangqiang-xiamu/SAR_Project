@@ -1,9 +1,7 @@
-# network.py
 
 import torch
 import torch.nn as nn
 from torchvision import models
-
 
 # 定义模型加载函数
 def load_model(class_names, model_path='resnet18_model.pth'):
