@@ -31,17 +31,3 @@ def mixup_criterion(criterion, pred, y_a, y_b, lam):
     :return: 损失值
     """
     return lam * criterion(pred, y_a) + (1 - lam) * criterion(pred, y_b)  # 线性加权损失
-
-def main():
-    # 模拟数据加载和标签
-    images = torch.randn(5, 3, 224, 224)  # 假设有5个3通道224x224的图像
-    labels = torch.randint(0, 2, (5,))  # 假设有5个标签，类别0或1
-
-    mixed_images, mixed_labels, lam = mixup_data(images, labels, alpha=1.0)  # Unpack all three
-
-    print("Mixed images shape:", mixed_images.shape)
-    print("Mixed labels:", mixed_labels)
-    print("Lambda value:", lam)
-
-if __name__ == "__main__":
-    main()

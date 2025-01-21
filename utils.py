@@ -26,12 +26,12 @@ class SARDataset(Dataset):
         self.img_paths = []
         self.labels = []
 
-        print(f"Loading images from {self.img_dir}...")  # 调试信息
+        #print(f"Loading images from {self.img_dir}...")  # 调试信息
         for label, class_name in enumerate(self.class_names):
             class_dir = os.path.join(self.img_dir, class_name)
-            print(f"Checking class directory: {class_dir}")  # 调试信息
+            #print(f"Checking class directory: {class_dir}")  # 调试信息
             if os.path.isdir(class_dir):
-                print(f"Found class folder: {class_dir}")  # 调试信息
+                #print(f"Found class folder: {class_dir}")  # 调试信息
                 for filename in os.listdir(class_dir):
                     img_path = os.path.join(class_dir, filename)
                     # 检查文件类型
@@ -39,7 +39,7 @@ class SARDataset(Dataset):
                         self.img_paths.append(img_path)
                         if not self.is_unlabeled:
                             self.labels.append(label)  # 只有在有标签数据集时才添加标签
-                        print(f"Added image: {img_path}")  # 调试信息
+                        #print(f"Added image: {img_path}")  # 调试信息
                     else:
                         print(f"Skipping non-image file: {img_path}")  # 非图像文件跳过
             else:
