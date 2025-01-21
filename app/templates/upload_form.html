@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>上传图片进行预测</title>
+</head>
+<body>
+    <h2>上传一张图片进行SAR目标识别</h2>
+    <form action="/predict" method="POST" enctype="multipart/form-data">
+        <label for="file">请选择要上传的图片：</label>
+        <input type="file" name="file" accept="image/*" required>
+        <button type="submit">提交</button>
+    </form>
+</body>
+</html>

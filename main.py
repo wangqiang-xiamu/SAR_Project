@@ -1,12 +1,12 @@
 import os
 from utils import SARDataset
+import torch.nn.functional as F
 from torchvision.models import ResNet18_Weights
 import torch
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms,models
 import torch.nn as nn
 import torch.optim as optim
-from PIL import Image
 from methods.mixup import mixup_data
 from methods.fixmatch import fixmatch_criterion
 # MixUp + FixMatch组合：在传统MixUp的基础上加入FixMatch，可以更好地利用未标记数据。
@@ -45,7 +45,7 @@ def main():
     test_dataloader = DataLoader(test_dataset, batch_size=32, shuffle=False, num_workers=6, pin_memory=True)
     unlabeled_dataloader = DataLoader(unlabeled_dataset, batch_size=32, shuffle=True, num_workers=6, pin_memory=True)
 
-    # 加载ResNet18模型
+    # 加载ResNet18模型ƒ
     # 使用新的 weights 参数加载模型
     # ResNet18_Weights.DEFAULT: 使用最新推荐的预训练权重。
     model = models.resnet18(weights=ResNet18_Weights.IMAGENET1K_V1)
@@ -97,17 +97,65 @@ def main():
         with torch.no_grad():
             for unlabeled_images in unlabeled_dataloader:  # 直接获取图像
                 unlabeled_images = unlabeled_images.to(device)
+                # 为无标签数据生成伪标签
+                # 这里需要两个增强：弱增强和强增强
+                weak_images = augment_data(unlabeled_images, weak=True)
+                strong_images = augment_data(unlabeled_images, weak=False)
 
-                # 利用FixMatch生成伪标签并计算一致性损失
-                pseudo_labels = fixmatch_criterion(model, unlabeled_images)  # 你需要实现这个函数
-                # 这里将伪标签加入优化过程
+
+                weak_logits = model(weak_images)  # 计算弱增强的预测
+                strong_logits = model(strong_images)  # 计算强增强的预测
+                weak_logits.requires_grad_()  # 确保 weak_logits 需要梯度
+                strong_logits.requires_grad_()  # 确保 strong_logits 需要梯度
+
+                print(f"weak_logits requires_grad: {weak_logits.requires_grad}")
+                print(f"strong_logits requires_grad: {strong_logits.requires_grad}")
+                weak_probs = F.softmax(weak_logits, dim=1)
+                print(f"weak_probs values: {weak_probs}")
+                max_probs, _ = torch.max(weak_probs, dim=1)
+                print(f"max_probs values: {max_probs}")
+
+                # 计算伪标签
+                pseudo_labels = fixmatch_criterion(weak_logits, strong_logits, threshold=0.7, T=0.5)
+
+                print(f"pseudo_labels shape: {pseudo_labels.shape}")
+                # 确保 pseudo_labels 是 long 类型
+                pseudo_labels = pseudo_labels.long()
+
+                # 计算损失
+                print(loss.requires_grad)  # 确保损失函数输出的梯度计算是可用的
+                # 获取模型的弱和强输出
+                weak_logits, strong_logits = model(images), model(images)
+
+                # 计算弱模型的伪标签
+                weak_probs = F.softmax(weak_logits, dim=1)
+                max_probs, pseudo_labels = weak_probs.max(dim=1)
+
+                # 伪标签过滤
+                mask = max_probs.ge(0.95).float()  # 可信度阈值
+                pseudo_labels = pseudo_labels * mask  # 将伪标签中不可信的部分置为 0
+                print(pseudo_labels)
+                pseudo_labels = pseudo_labels.long()  # 将标签转换为 long 类型
+                # 计算损失
+                loss = fixmatch_criterion(strong_logits, pseudo_labels, mask)
+
+                outputs = model(mixed_images)
+                outputs.requires_grad_()  # 强制启用梯度计算
+                # 确保模型输出启用梯度计算
+                weak_logits.requires_grad_()
+                strong_logits.requires_grad_()
+
+                if not loss.requires_grad:
+                    print("Loss does not require gradients!")
+                else:
+                    loss.backward()
+
+                # 将伪标签加入优化过程
                 optimizer.zero_grad()
-                loss = criterion(pseudo_labels, labels)
-                loss.backward()
                 optimizer.step()
 
-    # 保存模型
-    torch.save(model.state_dict(), 'resnet18_model.pth')
+        # 保存模型
+        torch.save(model.state_dict(), 'resnet18_model.pth')
 
     # 测试过程
     model.eval()
@@ -123,6 +171,28 @@ def main():
 
     test_acc = correct / total * 100
     print(f"Test Accuracy: {test_acc:.2f}%")
+
+
+def augment_data(unlabeled_images, weak=False):
+    # 定义数据增强操作（不再使用 ToTensor，如果图像已是 Tensor）
+    transform = transforms.Compose([
+        # 在此处根据需要添加其他增强操作，例如随机裁剪、翻转等
+    ])
+
+    weak_images = []
+    for image in unlabeled_images:
+        # 检查 image 是否已经是 Tensor，如果不是才使用 ToTensor()
+        if isinstance(image, torch.Tensor):
+            weak_images.append(image)  # 如果是 Tensor，直接使用
+        else:
+            image = transforms.ToTensor()(image)  # 如果是 PIL 图像或 ndarray，转换为 Tensor
+            weak_images.append(image)
+
+    # 将图像堆叠成一个批次
+    weak_images = torch.stack(weak_images)  # 堆叠成一个批次，形状是 (batch_size, channels, height, width)
+
+    return weak_images
+
 
 if __name__ == "__main__":
     main()

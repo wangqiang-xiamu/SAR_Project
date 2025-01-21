@@ -1,17 +1,22 @@
+# network.py
+
 import torch
 import torch.nn as nn
 from torchvision import models
 
 
-class SARNet(nn.Module):
-    def __init__(self, num_classes=10):
-        super(SARNet, self).__init__()
+# 定义模型加载函数
+def load_model(class_names, model_path='resnet18_model.pth'):
+    # 加载预训练的ResNet18模型
+    model = models.resnet18(weights=models.ResNet18_Weights.IMAGENET1K_V1)
 
-        # 使用预训练模型ResNet18，不加载预训练权重
-        self.resnet18 = models.resnet18(pretrained=False)
+    # 修改输出层以匹配你的类别数量
+    model.fc = nn.Linear(model.fc.in_features, len(class_names))
 
-        # 修改ResNet18的最后一层，全连接层输出类别数
-        self.resnet18.fc = nn.Linear(self.resnet18.fc.in_features, num_classes)
+    # 加载模型权重
+    model.load_state_dict(torch.load(model_path, map_location=torch.device('cpu'), weights_only=True))
 
-    def forward(self, x):
-        return self.resnet18(x)  # 直接返回ResNet18的输出
+    # 设置为评估模式
+    model.eval()
+
+    return model
