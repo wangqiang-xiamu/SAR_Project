@@ -31,7 +31,7 @@ def main():
     test_img_dir = './data/MSTAR/mstar-test'  # 测试数据
     # train_img_dir = './data/MSTAR/mstar-train'  # 有标签的训练数据
     # test_img_dir = './data/MSTAR/mstar-test'  # 测试数据
-    unlabeled_img_dir = './data/MSTAR/mstar-unlabeled'  # 无标签数据路径（如果有）
+    unlabeled_img_dir = './data/MSTAR/mstar-unlabeled'  # 无标签数据路径
 
     # 创建训练数据集和测试数据集
     train_dataset = SARDataset(img_dir=train_img_dir, class_names=class_names, transform=transform)
@@ -97,62 +97,38 @@ def main():
         with torch.no_grad():
             for unlabeled_images in unlabeled_dataloader:  # 直接获取图像
                 unlabeled_images = unlabeled_images.to(device)
+
                 # 为无标签数据生成伪标签
-                # 这里需要两个增强：弱增强和强增强
                 weak_images = augment_data(unlabeled_images, weak=True)
                 strong_images = augment_data(unlabeled_images, weak=False)
 
-
+                # 获取模型的预测
                 weak_logits = model(weak_images)  # 计算弱增强的预测
                 strong_logits = model(strong_images)  # 计算强增强的预测
+
                 weak_logits.requires_grad_()  # 确保 weak_logits 需要梯度
                 strong_logits.requires_grad_()  # 确保 strong_logits 需要梯度
 
-                print(f"weak_logits requires_grad: {weak_logits.requires_grad}")
-                print(f"strong_logits requires_grad: {strong_logits.requires_grad}")
-                weak_probs = F.softmax(weak_logits, dim=1)
-                print(f"weak_probs values: {weak_probs}")
-                max_probs, _ = torch.max(weak_probs, dim=1)
-                print(f"max_probs values: {max_probs}")
-
                 # 计算伪标签
-                pseudo_labels = fixmatch_criterion(weak_logits, strong_logits, threshold=0.7, T=0.5)
-
-                print(f"pseudo_labels shape: {pseudo_labels.shape}")
-                # 确保 pseudo_labels 是 long 类型
-                pseudo_labels = pseudo_labels.long()
-
-                # 计算损失
-                print(loss.requires_grad)  # 确保损失函数输出的梯度计算是可用的
-                # 获取模型的弱和强输出
-                weak_logits, strong_logits = model(images), model(images)
-
-                # 计算弱模型的伪标签
                 weak_probs = F.softmax(weak_logits, dim=1)
                 max_probs, pseudo_labels = weak_probs.max(dim=1)
 
                 # 伪标签过滤
                 mask = max_probs.ge(0.95).float()  # 可信度阈值
                 pseudo_labels = pseudo_labels * mask  # 将伪标签中不可信的部分置为 0
-                print(pseudo_labels)
                 pseudo_labels = pseudo_labels.long()  # 将标签转换为 long 类型
+
                 # 计算损失
                 loss = fixmatch_criterion(strong_logits, pseudo_labels, mask)
 
-                outputs = model(mixed_images)
-                outputs.requires_grad_()  # 强制启用梯度计算
-                # 确保模型输出启用梯度计算
-                weak_logits.requires_grad_()
-                strong_logits.requires_grad_()
-
+                # 反向传播与优化
                 if not loss.requires_grad:
                     print("Loss does not require gradients!")
                 else:
                     loss.backward()
 
-                # 将伪标签加入优化过程
-                optimizer.zero_grad()
-                optimizer.step()
+                optimizer.zero_grad()  # 清空梯度
+                optimizer.step()  # 更新模型参数
 
         # 保存模型
         torch.save(model.state_dict(), 'resnet18_model.pth')
@@ -170,7 +146,7 @@ def main():
             correct += (predicted == labels).sum().item()
 
     test_acc = correct / total * 100
-    print(f"Test Accuracy: {test_acc:.2f}%")
+    print(f"Test Accuracy（通过测试数据集测试模型准确性）: {test_acc:.2f}%")
 
 
 def augment_data(unlabeled_images, weak=False):

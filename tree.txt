@@ -8,7 +8,7 @@ sar-ground-target-recognition/
 ├── data/
 │   ├── train/              # 训练集图片
 │   ├── test/               # 测试集图片
-│   └── labels/             # 数据标签（如果有）
+│   └── labels/             # 无标签数据标签
 │
 ├── methods/                # 包含 MixUp, MixMatch 和 FixMatch 等增强方法
 │   ├── mixup.py            # MixUp 数据增强
