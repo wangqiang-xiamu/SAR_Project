@@ -1,3 +1,5 @@
+from sympy import false
+
 from utils import SARDataset
 import torch.nn.functional as F
 from models.network import load_model
@@ -17,12 +19,14 @@ transform = transforms.Compose([
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # 预训练模型的标准化
 ])
 
-class_names = ['2S1', 'BMP2', 'BRDM_2', 'BTR60', 'BTR70', 'D7', 'T62', 'T72', 'ZIL131', 'ZSU_23_4']
+#class_names = ['2S1', 'BMP2', 'BRDM_2', 'BTR60', 'BTR70', 'D7', 'T62', 'T72', 'ZIL131', 'ZSU_23_4']
+#测试
+class_names = ['2S1', 'BMP2']
 
 def main():
     # 路径配置
     train_img_dir = './data/MSTAR/mstar-train-test'  # 有标签的训练数据
-    test_img_dir = './data/MSTAR/mstar-test'  # 测试数据
+    test_img_dir = './data/MSTAR/mstar-test-test'  # 测试数据
     unlabeled_img_dir = './data/MSTAR/mstar-unlabeled'  # 无标签数据路径
 
     # 创建训练数据集和测试数据集
@@ -33,12 +37,19 @@ def main():
     unlabeled_dataset = SARDataset(img_dir=unlabeled_img_dir, class_names=class_names, transform=transform, is_unlabeled=True)
 
     # 创建数据加载器
-    train_dataloader = DataLoader(train_dataset, batch_size=32, shuffle=True, num_workers=4, pin_memory=True)
+    train_dataloader = DataLoader(train_dataset, batch_size=32, shuffle=False, num_workers=4, pin_memory=True)
     test_dataloader = DataLoader(test_dataset, batch_size=32, shuffle=False, num_workers=4, pin_memory=True)
-    unlabeled_dataloader = DataLoader(unlabeled_dataset, batch_size=32, shuffle=True, num_workers=4, pin_memory=True)
+    unlabeled_dataloader = DataLoader(unlabeled_dataset, batch_size=32, shuffle=False, num_workers=4, pin_memory=True)
 
+    # 假设 train_loader 和 test_loader 是您的训练和测试数据加载器
+    train_labels = [label for _, label in train_dataloader]  # 只提取标签
+    test_labels = [label for _, label in test_dataloader]  # 只提取标签
+
+    # 打印标签的前几个元素进行检查
+    print("训练数据标签:", train_labels[:10])
+    print("测试数据标签:", test_labels[:10])
     # 加载ResNet18模型
-    model =load_model(class_names)
+    model =load_model(class_names,false)
     #检测是否有可用的GPU，如果有则使用GPU，否则使用CPU。
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     #将模型移动到正确的计算设备上，以便后续的计算在GPU或CPU上进行。
@@ -56,7 +67,6 @@ def main():
     # 训练过程
     #有标签数据
     #MixUp数据增强
-    print("有标签数据训练")
     #设置训练的轮数为 10。
     num_epochs = 10
     for epoch in range(num_epochs):
@@ -67,7 +77,7 @@ def main():
         running_loss = 0.0
         correct = 0
         total = 0
-
+        print("有标签数据训练")
         for (images, labels) in train_dataloader:
             # 从训练数据加载器中加载一批图像和标签
             images, labels = images.to(device), labels.to(device)
@@ -81,9 +91,10 @@ def main():
             #通过模型进行前向传播，计算损失。
             outputs = model(mixed_images)
             loss = criterion(outputs, mixed_labels)
+            print("Loss:", loss.item())  # 输出损失
 
             # 反向传播
-            #反向传播计算梯度，并更新模型参数。
+            #反向传播计算梯度，并更新模型参数。`
             loss.backward()
             optimizer.step()
             #running_loss 是一个累加器，用于记录每个 epoch 中所有批次的总损失。
@@ -108,11 +119,11 @@ def main():
         #损失率会随着训练轮次（epoch）的增加而逐渐减小
         epoch_loss = running_loss / len(train_dataloader)
         epoch_acc = correct / total * 100
-        print(f"Epoch（训练轮次）[{epoch+1}/{num_epochs}], Loss: {epoch_loss:.4f}, Accuracy: {epoch_acc:.2f}%")
+        #print(f"Epoch（训练轮次）[{epoch+1}/{num_epochs}], Loss: {epoch_loss:.4f}, Accuracy: {epoch_acc:.2f}%")
 
 
         # 使用FixMatch进行无标签数据训练
-        print("使用FixMatch进行无标签数据训练")
+        print("无标签数据训练")
         # 是一个上下文管理器，
         # 表示在其范围内不计算梯度。它通常用于推理（推断），以减少内存开销和计算时间，
         # 因为模型的输出不需要用于反向传播和梯度计算。
@@ -211,9 +222,11 @@ def main():
     total = 0
     with torch.no_grad():
         for images, labels in test_dataloader:
+            print(labels)  # 打印标签，查看标签是否正确加载
             images, labels = images.to(device), labels.to(device)
             outputs = model(images)
             _, predicted = torch.max(outputs.data, 1)
+            print(predicted)  # 打印模型的预测值
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
 

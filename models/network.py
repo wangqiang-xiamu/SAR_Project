@@ -1,19 +1,31 @@
 import torch
+import os
 import torch.nn as nn
 from torchvision import models
 
 # 定义模型加载函数
-def load_model(class_names, model_path='resnet18_model.pth'):
-    # 加载预训练的ResNet18模型
-    model = models.resnet18(weights=models.ResNet18_Weights.IMAGENET1K_V1)
+def load_model(class_names, model_path):
+    if not model_path:
+        print("初始化模型")
+        # 加载预训练的ResNet18模型
+        model = models.resnet18(weights=models.ResNet18_Weights.IMAGENET1K_V1)
+        return model
+    model = models.resnet18(weights=None)  # 不加载预训练权重
+    # 获取 ResNet 的最后一层 (fc)
+    num_ftrs = model.fc.in_features
 
-    # 修改输出层以匹配你的类别数量
-    model.fc = nn.Linear(model.fc.in_features, len(class_names))
+    # 修改最后一层，确保输出类别数与当前任务的类别数一致
+    model.fc = nn.Linear(num_ftrs, len(class_names))  # 10 类别
 
-    # 加载模型权重
-    model.load_state_dict(torch.load(model_path, map_location=torch.device('cpu'), weights_only=True))
+    # 加载训练好的权重，忽略最后一层
+    state_dict = torch.load(model_path)
+    # Remove the last layer parameters (fc layers)
+    state_dict.pop('fc.weight', None)
+    state_dict.pop('fc.bias', None)
 
-    # 设置为评估模式
-    model.eval()
+    model.load_state_dict(state_dict, strict=False)  # 只加载匹配的部分
 
+    model.eval()  # 切换到评估模式
+    print("加载模型文件成功")
     return model
+

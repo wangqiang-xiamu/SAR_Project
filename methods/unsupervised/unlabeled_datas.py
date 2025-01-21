@@ -12,7 +12,7 @@ transform = transforms.Compose([
     transforms.ToTensor(),  # 转换为张量
 ])
 
-def augment_data(data_path, output_dir, num_augmentations=2):
+def augment_data(data_path, output_dir, num_augmentations=1):
     """
     生成增强的数据（无标签数据）
     data_path: 有标签数据的路径
