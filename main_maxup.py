@@ -1,4 +1,4 @@
-from sympy import false
+
 from utils import SARDataset
 import torch.nn.functional as F
 from models.network import load_model
@@ -8,7 +8,6 @@ from torchvision import transforms, models
 import torch.nn as nn
 import torch.optim as optim
 from methods.mixup import mixup_data
-from methods.fixmatch import fixmatch_criterion
 
 # 数据增强示例：包括调整大小、转换为Tensor和归一化，将图像转化为神经网络模型可以处理的格式。
 transform = transforms.Compose([
@@ -57,15 +56,19 @@ def main():
     criterion = nn.CrossEntropyLoss()  # 有标签数据的损失函数
     #使用 Adam 优化器，学习率为 0.001
     # optimizer = optim.Adam(model.parameters(), lr=0.001)  # Adam优化器
-    #调整
-    optimizer = optim.Adam(model.parameters(), lr=0.005)  # Adam优化器
+    # 创建两个不同的优化器，分别对应有标签和无标签数据的不同学习率
+    optimizer_labeled = optim.Adam(model.parameters(), lr=1)  # 有标签数据的优化器
+    optimizer_unlabeled = optim.Adam(model.parameters(), lr=0.005)  # 无标签数据的优化器
 
     # 定义学习率调度器
     #使用 StepLR 学习率调度器，每 5 个 epoch 将学习率降低 10%。
-    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
+    #scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
+    # 创建两个不同的优化器，分别对应有标签和无标签数据的不同学习率
+    scheduler_labeled = optim.lr_scheduler.StepLR(optimizer_labeled, step_size=5, gamma=0.1)
+    scheduler_unlabeled = optim.lr_scheduler.StepLR(optimizer_unlabeled, step_size=5, gamma=0.1)
 
     # 训练过程
-    num_epochs = 10  # 设置训练的轮数为 10
+    num_epochs = 20  # 设置训练的轮数为 10
     for epoch in range(num_epochs):
         print(f"训练轮次(start): {epoch + 1} ")
 
@@ -84,7 +87,7 @@ def main():
             images, labels = images.to(device), labels.to(device)
 
             # 清零优化器的梯度
-            optimizer.zero_grad()
+            optimizer_labeled.zero_grad()
 
             # MixUp数据增强：使用 MixUp 方法生成混合图像和标签
             mixed_images, mixed_labels, lam = mixup_data(images, labels, alpha=1.0)
@@ -95,7 +98,7 @@ def main():
 
             # 反向传播
             loss.backward()
-            optimizer.step()
+            optimizer_labeled.step()
 
             # 累加损失
             running_loss += loss.item()
@@ -109,11 +112,12 @@ def main():
         # 每个 epoch 输出损失和准确度
         epoch_loss = running_loss / len(train_dataloader)
         epoch_acc = correct / total * 100
-        print(f"Epoch（训练轮次） [{epoch + 1}/{num_epochs}], Loss: {epoch_loss:.4f}, Accuracy: {epoch_acc:.2f}%")
+        print(f"Epoch（训练轮次） [{epoch + 1}/{num_epochs}], Loss: {epoch_loss:.4f}, Accuracy_labeled: {epoch_acc:.2f}%")
 
         # 使用 MixUp 对无标签数据进行训练
         print("无标签数据训练")
         for unlabeled_images in unlabeled_dataloader:  # 获取无标签图像
+            optimizer_unlabeled.zero_grad()
             unlabeled_images = unlabeled_images.to(device)
 
             # 数据增强：生成弱增强和强增强版本
@@ -125,6 +129,7 @@ def main():
 
             # 获取强增强图像的预测
             strong_logits = model(strong_images)
+            #loss = criterion(strong_logits, pseudo_labels)
 
             # 计算伪标签：基于弱增强图像的预测概率
             weak_probs = F.softmax(weak_logits, dim=1)
@@ -144,7 +149,7 @@ def main():
 
             # 反向传播
             loss.backward()
-            optimizer.step()
+            optimizer_unlabeled.step()
 
             # 累加损失
             running_loss += loss.item()
@@ -158,10 +163,14 @@ def main():
         # 每个 epoch 输出损失和准确度
         epoch_loss = running_loss / len(unlabeled_dataloader)
         epoch_acc = correct / total * 100
-        print(f"Epoch（训练轮次） [{epoch + 1}/{num_epochs}], Loss: {epoch_loss:.4f}, Accuracy: {epoch_acc:.2f}%")
+        print(f"Epoch（训练轮次） [{epoch + 1}/{num_epochs}], Loss: {epoch_loss:.4f}, Accuracy_unlabeled: {epoch_acc:.2f}%")
 
         # 在每个 epoch 后更新学习率
-        scheduler.step()
+        # 更新有标签数据的学习率
+        scheduler_labeled.step()
+
+        # 更新无标签数据的学习率
+        scheduler_unlabeled.step()
 
         # 保存模型
         torch.save(model.state_dict(), f'model_epoch_{epoch+1}_maxup.pth')
