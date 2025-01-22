@@ -22,8 +22,8 @@ class_names = ['2S1', 'BMP2', 'BRDM_2', 'BTR60', 'BTR70', 'D7', 'T62', 'T72', 'Z
 def main():
     # 路径配置
     #
-    train_img_dir = './data/MSTAR/mstar-train-test'  # 有标签的训练数据
-    test_img_dir = './data/MSTAR/mstar-test-test'  # 测试数据
+    train_img_dir = './data/MSTAR/mstar-train'  # 有标签的训练数据
+    test_img_dir = './data/MSTAR/mstar-test'  # 测试数据
     unlabeled_img_dir = './data/MSTAR/mstar-unlabeled'  # 无标签数据路径
 
     # 创建训练数据集和测试数据集
@@ -46,9 +46,21 @@ def main():
 
     # 加载ResNet18模型
     model =load_model(class_names,False)
-
-    #检测是否有可用的GPU，如果有则使用GPU，否则使用CPU。
+    #
+    # #检测是否有可用的GPU，如果有则使用GPU，否则使用CPU。
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # #//mac gpu
+    # # 检测是否有可用的 Metal GPU（适用于 Apple Silicon，如 M1/M2）
+    # import os
+    # os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
+    # if torch.backends.mps.is_available():  # MPS 是 Metal Performance Shaders 的缩写
+    #     device = torch.device("mps")  # 使用 Metal GPU
+    # else:
+    #     device = torch.device("cpu")  # 使用 CPU
+    #
+    # print(f"Using device: {device}")
+    # #//mac gpu
+
     #将模型移动到正确的计算设备上，以便后续的计算在GPU或CPU上进行。
     model = model.to(device)
 
@@ -57,14 +69,14 @@ def main():
     #使用 Adam 优化器，学习率为 0.001
     # optimizer = optim.Adam(model.parameters(), lr=0.001)  # Adam优化器
     # 创建两个不同的优化器，分别对应有标签和无标签数据的不同学习率
-    optimizer_labeled = optim.Adam(model.parameters(), lr=1)  # 有标签数据的优化器
+    optimizer_labeled = optim.Adam(model.parameters(), lr=0.01)  # 有标签数据的优化器
     optimizer_unlabeled = optim.Adam(model.parameters(), lr=0.005)  # 无标签数据的优化器
 
     # 定义学习率调度器
     #使用 StepLR 学习率调度器，每 5 个 epoch 将学习率降低 10%。
     #scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
     # 创建两个不同的优化器，分别对应有标签和无标签数据的不同学习率
-    scheduler_labeled = optim.lr_scheduler.StepLR(optimizer_labeled, step_size=5, gamma=0.1)
+    scheduler_labeled = optim.lr_scheduler.StepLR(optimizer_labeled, step_size=20, gamma=0.1)
     scheduler_unlabeled = optim.lr_scheduler.StepLR(optimizer_unlabeled, step_size=5, gamma=0.1)
 
     # 训练过程
