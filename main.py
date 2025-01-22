@@ -58,7 +58,7 @@ def main():
     print("测试数据标签:", test_labels[:10])
 
     # 加载ResNet18模型
-    model =load_model(class_names,false)
+    model =load_model(class_names,False)
 
     #检测是否有可用的GPU，如果有则使用GPU，否则使用CPU。
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
