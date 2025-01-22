@@ -10,9 +10,19 @@ app = Flask(__name__)
 
 # 类别名称（根据你的训练数据）
 class_names = ['2S1', 'BMP2', 'BRDM_2', 'BTR60', 'BTR70', 'D7', 'T62', 'T72', 'ZIL131', 'ZSU_23_4']
-#
-# 加载训练好的模型
-model = load_model(class_names, model_path='model_epoch_5.pth')
+
+# 加载 MobileNetV2 架构
+model = models.mobilenet_v2(weights=None)  # 载入架构，不加载预训练权重
+
+# 加载预训练模型权重（这里的权重包含了1000个类别的最后一层）
+state_dict = torch.load('model_epoch_mobilenet_v2_1.pth')
+
+# 修改模型的最后一层，确保输出类别数与当前任务的类别数一致
+num_ftrs = model.classifier[1].in_features
+model.classifier[1] = nn.Linear(num_ftrs, len(class_names))  # 这里len(class_names)是你自己的类别数
+
+# # 加载权重（仅加载到与当前模型结构匹配的部分）
+model.load_state_dict(state_dict, strict=True)  # strict=False表示只加载匹配的层
 #print(model)
 
 # 图像预处理
@@ -70,4 +80,5 @@ def predict():
         return jsonify({'error': str(e)})
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, port=6000)  # 设置端口为 6000
+

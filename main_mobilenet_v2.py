@@ -58,7 +58,14 @@ def main():
     print("测试数据标签:", test_labels[:10])
 
     # 加载ResNet18模型
-    model =load_model(class_names,false)
+    #model =load_model(class_names,false)
+    #测试轻量级mobilenet_v2
+    # 加载MobileNetV2预训练模型
+    model = models.mobilenet_v2(weights=None)
+    # 获取原始模型最后一层的输入特征数
+    num_ftrs = model.classifier[1].in_features  # 原来的输出特征数
+    # 修改最后一层，将输出类别数设置为 len(class_names)
+    model.classifier[1] = nn.Linear(num_ftrs, len(class_names))  # 更新为我们任务的类别数
 
     #检测是否有可用的GPU，如果有则使用GPU，否则使用CPU。
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -224,7 +231,7 @@ def main():
         scheduler.step()
 
         # 保存模型
-        torch.save(model.state_dict(), f'model_epoch_{epoch+1}.pth')
+        torch.save(model.state_dict(), f'model_epoch_mobilenet_v2_{epoch+1}.pth2')
 
     # 测试过程
     model.eval()
