@@ -58,7 +58,7 @@ def main():
     #使用 Adam 优化器，学习率为 0.001
     # optimizer = optim.Adam(model.parameters(), lr=0.001)  # Adam优化器
     #调整
-    optimizer = optim.Adam(model.parameters(), lr=0.01)  # Adam优化器
+    optimizer = optim.Adam(model.parameters(), lr=0.005)  # Adam优化器
 
     # 定义学习率调度器
     #使用 StepLR 学习率调度器，每 5 个 epoch 将学习率降低 10%。
