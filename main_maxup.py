@@ -19,8 +19,6 @@ transform = transforms.Compose([
 ])
 
 class_names = ['2S1', 'BMP2', 'BRDM_2', 'BTR60', 'BTR70', 'D7', 'T62', 'T72', 'ZIL131', 'ZSU_23_4']
-#测试
-#class_names = ['2S1', 'BMP2']
 
 def main():
     # 路径配置
@@ -28,10 +26,6 @@ def main():
     train_img_dir = './data/MSTAR/mstar-train'  # 有标签的训练数据
     test_img_dir = './data/MSTAR/mstar-test'  # 测试数据
     unlabeled_img_dir = './data/MSTAR/mstar-unlabeled'  # 无标签数据路径
-    #
-    # train_img_dir = './data/MSTAR/mstar-train-test'  # 有标签的训练数据
-    # test_img_dir = './data/MSTAR/mstar-test-test'  # 测试数据
-    # unlabeled_img_dir = './data/MSTAR/mstar-unlabeled'  # 无标签数据路径
 
     # 创建训练数据集和测试数据集
     train_dataset = SARDataset(img_dir=train_img_dir, class_names=class_names, transform=transform)
@@ -44,12 +38,6 @@ def main():
     train_dataloader = DataLoader(train_dataset, batch_size=32, shuffle=False, num_workers=4, pin_memory=True)
     test_dataloader = DataLoader(test_dataset, batch_size=32, shuffle=False, num_workers=4, pin_memory=True)
     unlabeled_dataloader = DataLoader(unlabeled_dataset, batch_size=32, shuffle=False, num_workers=4, pin_memory=True)
-   #测试
-   #  train_dataloader = DataLoader(train_dataset, batch_size=2, shuffle=False, num_workers=4, pin_memory=True)
-   #  test_dataloader = DataLoader(test_dataset, batch_size=2, shuffle=False, num_workers=4, pin_memory=True)
-   #  unlabeled_dataloader = DataLoader(unlabeled_dataset, batch_size=2, shuffle=False, num_workers=4, pin_memory=True)
-   #
-   #  # 假设 train_loader 和 test_loader 是您的训练和测试数据加载器
     train_labels = [label for _, label in train_dataloader]  # 只提取标签
     test_labels = [label for _, label in test_dataloader]  # 只提取标签
 
@@ -68,7 +56,9 @@ def main():
     # 定义损失函数和优化器
     criterion = nn.CrossEntropyLoss()  # 有标签数据的损失函数
     #使用 Adam 优化器，学习率为 0.001
-    optimizer = optim.Adam(model.parameters(), lr=0.001)  # Adam优化器
+    # optimizer = optim.Adam(model.parameters(), lr=0.001)  # Adam优化器
+    #调整
+    optimizer = optim.Adam(model.parameters(), lr=0.01)  # Adam优化器
 
     # 定义学习率调度器
     #使用 StepLR 学习率调度器，每 5 个 epoch 将学习率降低 10%。
