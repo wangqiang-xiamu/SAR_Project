@@ -27,7 +27,7 @@ model.classifier[1] = nn.Linear(num_ftrs, len(class_names))  # 这里len(class_n
 
 # # 加载权重（仅加载到与当前模型结构匹配的部分）
 model.load_state_dict(state_dict, strict=True)  # strict=False表示只加载匹配的层
-print(model)
+#print(model)
 
 # 图像预处理
 transform = transforms.Compose([
