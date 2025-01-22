@@ -9,9 +9,9 @@ from models.network import load_model
 app = Flask(__name__)
 
 # 类别名称（根据你的训练数据）
-#class_names = ['2S1', 'BMP2', 'BRDM_2', 'BTR60', 'BTR70', 'D7', 'T62', 'T72', 'ZIL131', 'ZSU_23_4']
+class_names = ['2S1', 'BMP2', 'BRDM_2', 'BTR60', 'BTR70', 'D7', 'T62', 'T72', 'ZIL131', 'ZSU_23_4']
 #测试
-class_names = ['2S1', 'BMP2']
+# class_names = ['2S1', 'BMP2']
 # 加载训练好的模型
 #model = load_model(class_names, model_path='model_epoch_5.pth')
 #测试

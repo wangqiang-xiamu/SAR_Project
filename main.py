@@ -18,15 +18,20 @@ transform = transforms.Compose([
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # 预训练模型的标准化
 ])
 
-#class_names = ['2S1', 'BMP2', 'BRDM_2', 'BTR60', 'BTR70', 'D7', 'T62', 'T72', 'ZIL131', 'ZSU_23_4']
+class_names = ['2S1', 'BMP2', 'BRDM_2', 'BTR60', 'BTR70', 'D7', 'T62', 'T72', 'ZIL131', 'ZSU_23_4']
 #测试
-class_names = ['2S1', 'BMP2']
+#class_names = ['2S1', 'BMP2']
 
 def main():
     # 路径配置
-    train_img_dir = './data/MSTAR/mstar-train-test'  # 有标签的训练数据
-    test_img_dir = './data/MSTAR/mstar-test-test'  # 测试数据
+    #
+    train_img_dir = './data/MSTAR/mstar-train'  # 有标签的训练数据
+    test_img_dir = './data/MSTAR/mstar-test'  # 测试数据
     unlabeled_img_dir = './data/MSTAR/mstar-unlabeled'  # 无标签数据路径
+    #
+    # train_img_dir = './data/MSTAR/mstar-train-test'  # 有标签的训练数据
+    # test_img_dir = './data/MSTAR/mstar-test-test'  # 测试数据
+    # unlabeled_img_dir = './data/MSTAR/mstar-unlabeled'  # 无标签数据路径
 
     # 创建训练数据集和测试数据集
     train_dataset = SARDataset(img_dir=train_img_dir, class_names=class_names, transform=transform)
@@ -36,15 +41,15 @@ def main():
     unlabeled_dataset = SARDataset(img_dir=unlabeled_img_dir, class_names=class_names, transform=transform, is_unlabeled=True)
 
    #  # 创建数据加载器
-   #  train_dataloader = DataLoader(train_dataset, batch_size=32, shuffle=False, num_workers=4, pin_memory=True)
-   #  test_dataloader = DataLoader(test_dataset, batch_size=32, shuffle=False, num_workers=4, pin_memory=True)
-   #  unlabeled_dataloader = DataLoader(unlabeled_dataset, batch_size=32, shuffle=False, num_workers=4, pin_memory=True)
-   # #测试
-    train_dataloader = DataLoader(train_dataset, batch_size=2, shuffle=False, num_workers=4, pin_memory=True)
-    test_dataloader = DataLoader(test_dataset, batch_size=2, shuffle=False, num_workers=4, pin_memory=True)
-    unlabeled_dataloader = DataLoader(unlabeled_dataset, batch_size=2, shuffle=False, num_workers=4, pin_memory=True)
-
-    # 假设 train_loader 和 test_loader 是您的训练和测试数据加载器
+    train_dataloader = DataLoader(train_dataset, batch_size=32, shuffle=False, num_workers=4, pin_memory=True)
+    test_dataloader = DataLoader(test_dataset, batch_size=32, shuffle=False, num_workers=4, pin_memory=True)
+    unlabeled_dataloader = DataLoader(unlabeled_dataset, batch_size=32, shuffle=False, num_workers=4, pin_memory=True)
+   #测试
+   #  train_dataloader = DataLoader(train_dataset, batch_size=2, shuffle=False, num_workers=4, pin_memory=True)
+   #  test_dataloader = DataLoader(test_dataset, batch_size=2, shuffle=False, num_workers=4, pin_memory=True)
+   #  unlabeled_dataloader = DataLoader(unlabeled_dataset, batch_size=2, shuffle=False, num_workers=4, pin_memory=True)
+   #
+   #  # 假设 train_loader 和 test_loader 是您的训练和测试数据加载器
     train_labels = [label for _, label in train_dataloader]  # 只提取标签
     test_labels = [label for _, label in test_dataloader]  # 只提取标签
 
@@ -56,7 +61,7 @@ def main():
     #model =load_model(class_names,false)
     #测试轻量级mobilenet_v2
     # 加载MobileNetV2预训练模型
-    model = models.mobilenet_v2(pretrained=True)
+    model = models.mobilenet_v2(weights=None)
     # 获取原始模型最后一层的输入特征数
     num_ftrs = model.classifier[1].in_features  # 原来的输出特征数
     # 修改最后一层，将输出类别数设置为 len(class_names)

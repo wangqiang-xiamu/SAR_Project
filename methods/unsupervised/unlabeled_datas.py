@@ -45,5 +45,5 @@ def augment_data(data_path, output_dir, num_augmentations=1):
 
 if __name__ == '__main__':
     # 生成无标签数据
-    augment_data('/Users/xiamu/PycharmProjects/SAR_Project/data/MSTAR/mstar-train-test',
+    augment_data('/Users/xiamu/PycharmProjects/SAR_Project/data/MSTAR/mstar-train',
                  '/Users/xiamu/PycharmProjects/SAR_Project/data/MSTAR/mstar-unlabeled')
