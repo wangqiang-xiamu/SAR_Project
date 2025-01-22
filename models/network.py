@@ -8,7 +8,7 @@ def load_model(class_names, model_path):
     if not model_path:
         print("初始化模型")
         # 加载预训练的ResNet18模型
-        model = models.resnet18(weights=models.ResNet18_Weights.IMAGENET1K_V1)
+        model = models.resnet18(weights=None)  # 不加载预训练权重
         return model
     model = models.resnet18(weights=None)  # 不加载预训练权重
     # 获取 ResNet 的最后一层 (fc)

@@ -1,5 +1,4 @@
 from sympy import false
-
 from utils import SARDataset
 import torch.nn.functional as F
 from models.network import load_model
@@ -36,10 +35,14 @@ def main():
     # 创建无标签数据集
     unlabeled_dataset = SARDataset(img_dir=unlabeled_img_dir, class_names=class_names, transform=transform, is_unlabeled=True)
 
-    # 创建数据加载器
-    train_dataloader = DataLoader(train_dataset, batch_size=32, shuffle=False, num_workers=4, pin_memory=True)
-    test_dataloader = DataLoader(test_dataset, batch_size=32, shuffle=False, num_workers=4, pin_memory=True)
-    unlabeled_dataloader = DataLoader(unlabeled_dataset, batch_size=32, shuffle=False, num_workers=4, pin_memory=True)
+   #  # 创建数据加载器
+   #  train_dataloader = DataLoader(train_dataset, batch_size=32, shuffle=False, num_workers=4, pin_memory=True)
+   #  test_dataloader = DataLoader(test_dataset, batch_size=32, shuffle=False, num_workers=4, pin_memory=True)
+   #  unlabeled_dataloader = DataLoader(unlabeled_dataset, batch_size=32, shuffle=False, num_workers=4, pin_memory=True)
+   # #测试
+    train_dataloader = DataLoader(train_dataset, batch_size=2, shuffle=False, num_workers=4, pin_memory=True)
+    test_dataloader = DataLoader(test_dataset, batch_size=2, shuffle=False, num_workers=4, pin_memory=True)
+    unlabeled_dataloader = DataLoader(unlabeled_dataset, batch_size=2, shuffle=False, num_workers=4, pin_memory=True)
 
     # 假设 train_loader 和 test_loader 是您的训练和测试数据加载器
     train_labels = [label for _, label in train_dataloader]  # 只提取标签
@@ -48,8 +51,17 @@ def main():
     # 打印标签的前几个元素进行检查
     print("训练数据标签:", train_labels[:10])
     print("测试数据标签:", test_labels[:10])
+
     # 加载ResNet18模型
-    model =load_model(class_names,false)
+    #model =load_model(class_names,false)
+    #测试轻量级mobilenet_v2
+    # 加载MobileNetV2预训练模型
+    model = models.mobilenet_v2(pretrained=True)
+    # 获取原始模型最后一层的输入特征数
+    num_ftrs = model.classifier[1].in_features  # 原来的输出特征数
+    # 修改最后一层，将输出类别数设置为 len(class_names)
+    model.classifier[1] = nn.Linear(num_ftrs, len(class_names))  # 更新为我们任务的类别数
+
     #检测是否有可用的GPU，如果有则使用GPU，否则使用CPU。
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     #将模型移动到正确的计算设备上，以便后续的计算在GPU或CPU上进行。
@@ -91,7 +103,7 @@ def main():
             #通过模型进行前向传播，计算损失。
             outputs = model(mixed_images)
             loss = criterion(outputs, mixed_labels)
-            print("Loss:", loss.item())  # 输出损失
+            #print("Loss:", loss.item())  # 输出损失
 
             # 反向传播
             #反向传播计算梯度，并更新模型参数。`
@@ -214,7 +226,7 @@ def main():
         scheduler.step()
 
         # 保存模型
-        torch.save(model.state_dict(), f'model_epoch_{epoch+1}.pth')
+        torch.save(model.state_dict(), f'model_epoch_{epoch+1}.pth2')
 
     # 测试过程
     model.eval()
@@ -222,11 +234,11 @@ def main():
     total = 0
     with torch.no_grad():
         for images, labels in test_dataloader:
-            print(labels)  # 打印标签，查看标签是否正确加载
+            print(f"labels: {labels}")  # 打印标签，查看标签是否正确加载
             images, labels = images.to(device), labels.to(device)
             outputs = model(images)
             _, predicted = torch.max(outputs.data, 1)
-            print(predicted)  # 打印模型的预测值
+            print(f"predicted: {predicted}")  # 打印模型的预测值
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
 

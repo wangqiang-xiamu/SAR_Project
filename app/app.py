@@ -13,14 +13,28 @@ app = Flask(__name__)
 #测试
 class_names = ['2S1', 'BMP2']
 # 加载训练好的模型
-model = load_model(class_names, model_path='model_epoch_3.pth')
+#model = load_model(class_names, model_path='model_epoch_5.pth')
+#测试
+# 加载 MobileNetV2 架构
+model = models.mobilenet_v2(weights=None)  # 载入架构，不加载预训练权重
+
+# 加载预训练模型权重（这里的权重包含了1000个类别的最后一层）
+state_dict = torch.load('model_epoch_1.pth2')
+
+# 修改模型的最后一层，确保输出类别数与当前任务的类别数一致
+num_ftrs = model.classifier[1].in_features
+model.classifier[1] = nn.Linear(num_ftrs, len(class_names))  # 这里len(class_names)是你自己的类别数
+
+# # 加载权重（仅加载到与当前模型结构匹配的部分）
+model.load_state_dict(state_dict, strict=True)  # strict=False表示只加载匹配的层
+print(model)
 
 # 图像预处理
 transform = transforms.Compose([
     transforms.Grayscale(num_output_channels=3),  # 将灰度图转换为3通道RGB图像
     transforms.Resize((224, 224)),  # 调整图像大小为224x224
     transforms.ToTensor(),  # 转换为Tensor
-    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),  # 预训练模型标准化
+    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # 预训练模型的标准化
 ])
 
 @app.route('/')
@@ -41,15 +55,25 @@ def predict():
 
     try:
         # 打开并预处理图像
-        image = Image.open(file.stream).convert("RGB")  # 确保图像为RGB格式
-        image = transform(image).unsqueeze(0)  # 扩展维度，变为[1, 3, 224, 224]
+        image = Image.open(file.stream)
+        image = transform(image)
+        image = image.unsqueeze(0)  # 将形状从 (channels, height, width) 转换为 (1, channels, height, width)
 
         # 禁用梯度计算，进行推理
         with torch.no_grad():
             output = model(image)  # 前向传播
             _, predicted = torch.max(output, 1)  # 获取最大概率的类别
+            print(f"predicted: {predicted} ")
             prediction = predicted.item()  # 获取类别编号
+            label_map = {0: '2S1', 1: 'BMP2'}
+            predicted_label = label_map[predicted.item()]
+            print(f"Predicted label: {predicted_label}")
 
+
+            probabilities = torch.nn.functional.softmax(output, dim=1)
+            print(f"Probabilities: {probabilities}")
+            predicted_class = torch.argmax(probabilities, dim=1)
+            print(f"Predicted class: {predicted_class}")
 
         # 获取预测类别的名称
         predicted_class = class_names[prediction]
