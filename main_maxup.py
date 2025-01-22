@@ -23,8 +23,8 @@ class_names = ['2S1', 'BMP2', 'BRDM_2', 'BTR60', 'BTR70', 'D7', 'T62', 'T72', 'Z
 def main():
     # 路径配置
     #
-    train_img_dir = './data/MSTAR/mstar-train'  # 有标签的训练数据
-    test_img_dir = './data/MSTAR/mstar-test'  # 测试数据
+    train_img_dir = './data/MSTAR/mstar-train-test'  # 有标签的训练数据
+    test_img_dir = './data/MSTAR/mstar-test-test'  # 测试数据
     unlabeled_img_dir = './data/MSTAR/mstar-unlabeled'  # 无标签数据路径
 
     # 创建训练数据集和测试数据集

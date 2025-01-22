@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 
-def mixup_data(x, y, alpha=1.0):
+def mixup_data(x, y, alpha=0.1):
     """
     实现 MixUp 数据增强
     :param x: 输入数据（图像）

@@ -12,7 +12,7 @@ transform = transforms.Compose([
     transforms.ToTensor(),  # 转换为张量
 ])
 
-def augment_data(data_path, output_dir, num_augmentations=1):
+def augment_data(data_path, output_dir, num_augmentations=3):
     """
     生成增强的数据（无标签数据）
     data_path: 有标签数据的路径
@@ -45,5 +45,5 @@ def augment_data(data_path, output_dir, num_augmentations=1):
 
 if __name__ == '__main__':
     # 生成无标签数据
-    augment_data('/Users/xiamu/PycharmProjects/SAR_Project/data/MSTAR/mstar-train',
+    augment_data('/Users/xiamu/PycharmProjects/SAR_Project/data/MSTAR/mstar-train-test',
                  '/Users/xiamu/PycharmProjects/SAR_Project/data/MSTAR/mstar-unlabeled')
