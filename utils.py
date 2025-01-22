@@ -9,53 +9,50 @@ from torch.utils.data import Dataset
 # 对于无标签数据集，图像应存放在 mstar-unlabeled 中的类文件夹下。
 
 class SARDataset(Dataset):
-    def __init__(self, img_dir, class_names, transform=None, is_unlabeled=False):
+    def __init__(self, img_dir, class_names, transform=None, is_unlabeled=False, max_size=None):
         """
         初始化数据集类
         :param img_dir: 数据集所在的根目录
         :param class_names: 类别名称列表（例如 ["2S1", "BMP2", "T62", ...]）
         :param transform: 图像变换函数（例如，数据增强，归一化等）
         :param is_unlabeled: 如果是无标签数据集，设为True
+        :param max_size: 控制数据集大小，None 表示没有限制，指定值表示最大数量
         """
         self.img_dir = img_dir
         self.class_names = class_names
         self.transform = transform
         self.is_unlabeled = is_unlabeled
+        self.max_size = max_size
 
         # 存储图像路径和标签
         self.img_paths = []
         self.labels = []
 
-        #print(f"Loading images from {self.img_dir}...")  # 调试信息
+        # 加载图像数据
         for label, class_name in enumerate(self.class_names):
             class_dir = os.path.join(self.img_dir, class_name)
-            #print(f"Checking class directory: {class_dir}")  # 调试信息
             if os.path.isdir(class_dir):
-                #print(f"Found class folder: {class_dir}")  # 调试信息
                 for filename in os.listdir(class_dir):
                     img_path = os.path.join(class_dir, filename)
-                    # 检查文件类型
                     if img_path.lower().endswith((".jpg", ".png", ".jpeg")):
                         self.img_paths.append(img_path)
                         if not self.is_unlabeled:
-                            self.labels.append(label)  # 只有在有标签数据集时才添加标签
-                        #print(f"Added image: {img_path}")  # 调试信息
-                    else:
-                        print(f"Skipping non-image file: {img_path}")  # 非图像文件跳过
-            else:
-                print(f"Warning: {class_dir} is not a directory.")  # 如果类文件夹不存在，给出警告
+                            self.labels.append(label)
+                    if self.max_size and len(self.img_paths) >= self.max_size:
+                        break
+            if self.max_size and len(self.img_paths) >= self.max_size:
+                break
 
-        # 检查是否成功加载数据
         if len(self.img_paths) == 0:
             raise ValueError(f"Dataset is empty. No images found in {self.img_dir}")
 
-        print(f"Found {len(self.img_paths)} images in {self.img_dir}")  # 输出加载到的图像数量
+        print(f"Found {len(self.img_paths)} images in {self.img_dir}")
 
     def __len__(self):
         """
-        返回数据集的大小
+        返回数据集的大小（限制为 max_size）
         """
-        return len(self.img_paths)
+        return min(len(self.img_paths), self.max_size) if self.max_size else len(self.img_paths)
 
     def __getitem__(self, idx):
         """
