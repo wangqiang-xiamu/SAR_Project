@@ -75,11 +75,13 @@ def main():
     # 定义损失函数和优化器
     criterion = nn.CrossEntropyLoss()  # 有标签数据的损失函数
     #使用 Adam 优化器，学习率为 0.001
-    optimizer = optim.Adam(model.parameters(), lr=0.001)  # Adam优化器
+    optimizer_labeled = optim.Adam(model.parameters(), lr=0.01)  # 有标签数据的优化器
+    optimizer_unlabeled = optim.Adam(model.parameters(), lr=0.005)  # 无标签数据的优化器
 
     # 定义学习率调度器
     #使用 StepLR 学习率调度器，每 5 个 epoch 将学习率降低 10%。
-    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
+    scheduler_labeled = optim.lr_scheduler.StepLR(optimizer_labeled, step_size=20, gamma=0.1)
+    scheduler_unlabeled = optim.lr_scheduler.StepLR(optimizer_unlabeled, step_size=5, gamma=0.1)
 
     # 训练过程
     #有标签数据
@@ -99,7 +101,7 @@ def main():
             # 从训练数据加载器中加载一批图像和标签
             images, labels = images.to(device), labels.to(device)
             # 清零优化器的梯度
-            optimizer.zero_grad()
+            optimizer_labeled.zero_grad()
 
             # MixUp数据增强
             #使用 MixUp 数据增强方法，生成混合图像和标签。
@@ -113,7 +115,7 @@ def main():
             # 反向传播
             #反向传播计算梯度，并更新模型参数。`
             loss.backward()
-            optimizer.step()
+            optimizer_labeled.step()
             #running_loss 是一个累加器，用于记录每个 epoch 中所有批次的总损失。
             #loss.item() 获取当前批次的损失值，并将其累加到 running_loss 中。
             # loss 是模型输出与真实标签之间的损失，item() 将 PyTorch 张量转换为 Python 数字。
@@ -146,7 +148,10 @@ def main():
         # 因为模型的输出不需要用于反向传播和梯度计算。
         # 在此处，我们只是通过模型进行预测，因此不需要计算梯度。
         for unlabeled_images in unlabeled_dataloader:  # 直接获取图像
-                # 将批次中的无标签图像unlabeled_images移动到计算设备上（GPU 或CPU）
+            # 清零优化器的梯度
+            optimizer_unlabeled.zero_grad()
+
+            # 将批次中的无标签图像unlabeled_images移动到计算设备上（GPU 或CPU）
             unlabeled_images = unlabeled_images.to(device)
 
                 # augment_data 是一个数据增强函数，
@@ -208,9 +213,9 @@ def main():
                 #backward()：进行反向传播计算梯度。根据损失 loss 对模型的所有参数计算梯度。
             loss.backward()
                 #zero_grad()：在每次反向传播前，我们需要清空之前计算的梯度，否则梯度会累积。此行代码在每次优化步骤前清空梯度。
-            optimizer.zero_grad()  # 清空梯度
+            optimizer_unlabeled.zero_grad()  # 清空梯度
                 #step()：通过优化器更新模型的参数。它会根据计算出来的梯度来调整模型参数，以最小化损失函数。
-            optimizer.step()  # 更新模型参数
+            optimizer_unlabeled.step()  # 更新模型参数
             running_loss += loss.item()
 
             _, predicted = torch.max(outputs.data, 1)
@@ -228,7 +233,12 @@ def main():
         print(f"Epoch（训练轮次） [{epoch + 1}/{num_epochs}], Loss: {epoch_loss:.4f}, Accuracy: {epoch_acc:.2f}%")
 
         # 在每个epoch后更新学习率
-        scheduler.step()
+
+        # 更新有标签数据的学习率
+        scheduler_labeled.step()
+
+        # 更新无标签数据的学习率
+        scheduler_unlabeled.step()
 
         # 保存模型
         torch.save(model.state_dict(), f'model_epoch_mobilenet_v2_{epoch+1}.pth2')

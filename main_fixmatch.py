@@ -6,8 +6,6 @@ from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms, models
 import torch.nn as nn
 import torch.optim as optim
-from methods.mixup import mixup_data
-from methods.fixmatch import fixmatch_criterion
 
 # 数据增强示例：包括调整大小、转换为Tensor和归一化，将图像转化为神经网络模型可以处理的格式。
 transform = transforms.Compose([
@@ -58,13 +56,14 @@ def main():
     # 定义损失函数和优化器
     criterion = nn.CrossEntropyLoss()  # 有标签数据的损失函数
     #使用 Adam 优化器，学习率为 0.001
-    optimizer = optim.Adam(model.parameters(), lr=0.001)  # Adam优化器
+    optimizer_labeled = optim.Adam(model.parameters(), lr=0.01)  # 有标签数据的优化器
+    optimizer_unlabeled = optim.Adam(model.parameters(), lr=0.005)  # 无标签数据的优化器
 
     # 定义学习率调度器
     #使用 StepLR 学习率调度器，每 5 个 epoch 将学习率降低 10%。
-    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
-
-    # 训练过程
+    scheduler_labeled = optim.lr_scheduler.StepLR(optimizer_labeled, step_size=20, gamma=0.1)
+    scheduler_unlabeled = optim.lr_scheduler.StepLR(optimizer_unlabeled, step_size=5, gamma=0.1)
+#    训练过程
     num_epochs=10
     # threshold=0.95 是用于生成伪标签的一个阈值。具体来说，它的作用是在 FixMatch 方法中，
     # 通过设置一个最小的可信度门槛来决定是否将无标签数据的预测作为伪标签。
@@ -84,10 +83,12 @@ def main():
         # 训练有标签数据（使用 FixMatch 的方式）
         print("有标签数据训练（FixMatch）")
         for (images, labels) in train_dataloader:
+            # 清零优化器的梯度
+            optimizer_labeled.zero_grad()
             images, labels = images.to(device), labels.to(device)
 
             # 清零优化器的梯度
-            optimizer.zero_grad()
+            optimizer_labeled.zero_grad()
 
             # 对有标签数据进行弱增强和强增强
             weak_images = augment_data(images, weak=True)  # 假定 augment_data 是您的数据增强方法
@@ -111,7 +112,7 @@ def main():
 
             # 反向传播
             loss.backward()
-            optimizer.step()
+            optimizer_labeled.step()
 
             # 累加损失
             running_loss += loss.item()
@@ -130,6 +131,7 @@ def main():
         # 训练无标签数据（FixMatch）
         print("无标签数据训练（FixMatch）")
         for unlabeled_images in unlabeled_dataloader:
+            optimizer_unlabeled.zero_grad()
             unlabeled_images = unlabeled_images.to(device)
 
             # 生成弱增强和强增强版本
@@ -154,7 +156,7 @@ def main():
 
             # 反向传播
             loss.backward()
-            optimizer.step()
+            optimizer_unlabeled.step()
 
             # 累加损失
             running_loss += loss.item()
@@ -171,9 +173,10 @@ def main():
         print(f"Epoch（无标签训练轮次） [{epoch + 1}/{num_epochs}], Loss: {epoch_loss:.4f}, Accuracy: {epoch_acc:.2f}%")
 
         # 在每个 epoch 后更新学习率
-        scheduler.step()  # 假定您有学习率调度器（如果没有可以忽略）
-
-
+        # 更新有标签数据的学习率
+        scheduler_labeled.step()
+        # 更新无标签数据的学习率
+        scheduler_unlabeled.step()
         # 保存模型
         torch.save(model.state_dict(), f'model_epoch_{epoch+1}_fixmatch.pth')
 
