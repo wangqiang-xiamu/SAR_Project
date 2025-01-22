@@ -6,6 +6,8 @@ from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms, models
 import torch.nn as nn
 import torch.optim as optim
+import numpy as np
+from tqdm import tqdm
 
 # 数据增强示例：包括调整大小、转换为Tensor和归一化，将图像转化为神经网络模型可以处理的格式。
 transform = transforms.Compose([
@@ -26,11 +28,14 @@ def main():
     unlabeled_img_dir = './data/MSTAR/mstar-unlabeled'  # 无标签数据路径
 
     # 创建训练数据集和测试数据集
-    train_dataset = SARDataset(img_dir=train_img_dir, class_names=class_names, transform=transform)
-    test_dataset = SARDataset(img_dir=test_img_dir, class_names=class_names, transform=transform)
+    train_dataset = SARDataset(img_dir=train_img_dir, class_names=class_names, transform=transform
+                               ,max_size=10)
+    test_dataset = SARDataset(img_dir=test_img_dir, class_names=class_names, transform=transform,
+                              max_size=10)
 
     # 创建无标签数据集
-    unlabeled_dataset = SARDataset(img_dir=unlabeled_img_dir, class_names=class_names, transform=transform, is_unlabeled=True)
+    unlabeled_dataset = SARDataset(img_dir=unlabeled_img_dir, class_names=class_names, transform=transform, is_unlabeled=True,
+                                   max_size=100)
 
    #  # 创建数据加载器
     train_dataloader = DataLoader(train_dataset, batch_size=32, shuffle=False, num_workers=4, pin_memory=True)
@@ -63,8 +68,14 @@ def main():
     #使用 StepLR 学习率调度器，每 5 个 epoch 将学习率降低 10%。
     scheduler_labeled = optim.lr_scheduler.StepLR(optimizer_labeled, step_size=20, gamma=0.1)
     scheduler_unlabeled = optim.lr_scheduler.StepLR(optimizer_unlabeled, step_size=5, gamma=0.1)
-#    训练过程
-    num_epochs=10
+    # 训练过程
+    num_epochs = 20  # 设置训练的轮数为 10
+    # 设置test验证频率
+    validation_frequency = 5  # 每5个epoch进行一次验证
+    # 早停策略参数
+    patience = 5  # 如果验证损失在5个epoch内没有改善，提前停止训练
+    best_val_loss = np.inf  # 初始时设置为正无穷
+    epochs_without_improvement = 0  # 跟踪验证损失未改善的轮数
     # threshold=0.95 是用于生成伪标签的一个阈值。具体来说，它的作用是在 FixMatch 方法中，
     # 通过设置一个最小的可信度门槛来决定是否将无标签数据的预测作为伪标签。
     # 只有当模型对无标签数据的预测概率高于这个阈值时，才会将其作为有效的伪标签用于训练。
@@ -180,22 +191,56 @@ def main():
         # 保存模型
         torch.save(model.state_dict(), f'model_epoch_{epoch+1}_fixmatch.pth')
 
-    # 测试过程
-    model.eval()
+        #测试
+        # 每隔validation_frequency个epoch进行一次验证
+        if (epoch + 1) % validation_frequency == 0:
+            val_loss, val_acc = test_validate(model, test_dataloader, criterion, device)
+            print(f"TestValidation Loss: {val_loss:.4f}, Accuracy: {val_acc:.2f}%")
+
+            # 早停策略：如果验证损失没有改善，则停止训练
+            # 通过早停保存的模型是训练过程中性能最稳定、泛化能力最强的模型，因此它通常被认为是最佳的模型
+            if val_loss < best_val_loss:
+                best_val_loss = val_loss
+                epochs_without_improvement = 0
+                # 保存模型(最佳）
+                torch.save(model.state_dict(), f'model_epoch_{epoch + 1}_fixmatch_best.pth')
+            else:
+                epochs_without_improvement += 1
+                if epochs_without_improvement >= patience:
+                    print("Early stopping triggered. No improvement in validation loss.")
+                    break
+
+    print("Training finished.")
+
+
+def test_validate(model, dataloader, criterion, device):
+    """
+    验证过程函数，执行一个epoch的验证
+    参数：
+    - model: 神经网络模型
+    - dataloader: 验证数据加载器
+    - criterion: 损失函数
+    - device: 计算设备（CPU或GPU）
+    """
+    model.eval()  # 将模型设为评估模式
+    running_loss = 0.0
     correct = 0
     total = 0
-    with torch.no_grad():
-        for images, labels in test_dataloader:
-            print(f"labels: {labels}")  # 打印标签，查看标签是否正确加载
-            images, labels = images.to(device), labels.to(device)
-            outputs = model(images)
-            _, predicted = torch.max(outputs.data, 1)
-            print(f"predicted: {predicted}")  # 打印模型的预测值
-            total += labels.size(0)
-            correct += (predicted == labels).sum().item()
 
-    test_acc = correct / total * 100
-    print(f"Test Accuracy（通过测试数据集测试模型准确性）: {test_acc:.2f}%")
+    with torch.no_grad():  # 禁止梯度计算，节省内存
+        for images, labels in tqdm(dataloader, desc="Validating", leave=False):
+            images, labels = images.to(device), labels.to(device)
+            outputs = model(images)  # 获取模型输出
+            loss = criterion(outputs, labels)  # 计算损失
+
+            running_loss += loss.item()  # 累加损失
+            _, predicted = torch.max(outputs.data, 1)  # 获取预测的标签
+            total += labels.size(0)  # 累计样本数量
+            correct += (predicted == labels).sum().item()  # 累计正确预测的样本数
+
+    val_loss = running_loss / len(dataloader)  # 平均验证损失
+    val_acc = correct / total * 100  # 验证准确率
+    return val_loss, val_acc
 
 def augment_data(unlabeled_images, weak=False):
     # 定义数据增强操作（不再使用 ToTensor，如果图像已是 Tensor）

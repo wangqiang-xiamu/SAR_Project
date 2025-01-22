@@ -9,6 +9,8 @@ import torch.nn as nn
 import torch.optim as optim
 from methods.mixup import mixup_data
 from methods.fixmatch import fixmatch_criterion
+import numpy as np
+from tqdm import tqdm
 
 # 数据增强示例：包括调整大小、转换为Tensor和归一化，将图像转化为神经网络模型可以处理的格式。
 transform = transforms.Compose([
@@ -71,8 +73,15 @@ def main():
     # 训练过程
     #有标签数据
     #MixUp数据增强
-    #设置训练的轮数为 10。
-    num_epochs = 10
+    # 训练过程
+    num_epochs = 3  # 设置训练的轮数为 10
+    # 设置test验证频率
+    validation_frequency = 5  # 每5个epoch进行一次验证
+    # 早停策略参数
+    patience = 5  # 如果验证损失在5个epoch内没有改善，提前停止训练
+    best_val_loss = np.inf  # 初始时设置为正无穷
+    epochs_without_improvement = 0  # 跟踪验证损失未改善的轮数
+
     for epoch in range(num_epochs):
         print(f"训练轮次(start): {epoch+1} ")
         #设置模型为训练模式。
@@ -223,22 +232,57 @@ def main():
         # 保存模型
         torch.save(model.state_dict(), f'model_epoch_{epoch+1}.pth')
 
-    # 测试过程
-    model.eval()
-    correct = 0
-    total = 0
-    with torch.no_grad():
-        for images, labels in test_dataloader:
-            print(f"labels: {labels}")  # 打印标签，查看标签是否正确加载
-            images, labels = images.to(device), labels.to(device)
-            outputs = model(images)
-            _, predicted = torch.max(outputs.data, 1)
-            print(f"predicted: {predicted}")  # 打印模型的预测值
-            total += labels.size(0)
-            correct += (predicted == labels).sum().item()
+        #test
+        # 每隔validation_frequency个epoch进行一次验证
+        if (epoch + 1) % validation_frequency == 0:
+            val_loss, val_acc = test_validate(model, test_dataloader, criterion, device)
+            print(f"TestValidation Loss: {val_loss:.4f}, Accuracy: {val_acc:.2f}%")
 
-    test_acc = correct / total * 100
-    print(f"Test Accuracy（通过测试数据集测试模型准确性）: {test_acc:.2f}%")
+            # 早停策略：如果验证损失没有改善，则停止训练
+            # 通过早停保存的模型是训练过程中性能最稳定、泛化能力最强的模型，因此它通常被认为是最佳的模型
+            if val_loss < best_val_loss:
+                best_val_loss = val_loss
+                epochs_without_improvement = 0
+                # 保存模型(最佳）
+                torch.save(model.state_dict(), f'model_epoch_{epoch + 1}_best.pth')
+            else:
+                epochs_without_improvement += 1
+                if epochs_without_improvement >= patience:
+                    print("Early stopping triggered. No improvement in validation loss.")
+                    break
+
+    print("Training finished.")
+
+def test_validate(model, dataloader, criterion, device):
+        """
+        验证过程函数，执行一个epoch的验证
+        参数：
+        - model: 神经网络模型
+        - dataloader: 验证数据加载器
+        - criterion: 损失函数
+        - device: 计算设备（CPU或GPU）
+        """
+        model.eval()  # 将模型设为评估模式
+        running_loss = 0.0
+        correct = 0
+        total = 0
+
+        with torch.no_grad():  # 禁止梯度计算，节省内存
+            for images, labels in tqdm(dataloader, desc="Validating", leave=False):
+                images, labels = images.to(device), labels.to(device)
+                outputs = model(images)  # 获取模型输出
+                loss = criterion(outputs, labels)  # 计算损失
+
+                running_loss += loss.item()  # 累加损失
+                _, predicted = torch.max(outputs.data, 1)  # 获取预测的标签
+                total += labels.size(0)  # 累计样本数量
+                correct += (predicted == labels).sum().item()  # 累计正确预测的样本数
+
+        val_loss = running_loss / len(dataloader)  # 平均验证损失
+        val_acc = correct / total * 100  # 验证准确率
+        return val_loss, val_acc
+
+
 
 def augment_data(unlabeled_images, weak=False):
     # 定义数据增强操作（不再使用 ToTensor，如果图像已是 Tensor）
