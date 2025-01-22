@@ -46,8 +46,8 @@ def main():
     test_labels = [label for _, label in test_dataloader]  # 只提取标签
 
     # 打印标签的前几个元素进行检查
-    print("训练数据标签:", train_labels[:10])
-    print("测试数据标签:", test_labels[:10])
+    print("训练数据标签:", train_labels[:3])
+    print("测试数据标签:", test_labels[:3])
 
     # 加载ResNet18模型
     model =load_model(class_names,False)
@@ -74,7 +74,7 @@ def main():
     #使用 Adam 优化器，学习率为 0.001
     # optimizer = optim.Adam(model.parameters(), lr=0.001)  # Adam优化器
     # 创建两个不同的优化器，分别对应有标签和无标签数据的不同学习率
-    optimizer_labeled = optim.Adam(model.parameters(), lr=0.01)  # 有标签数据的优化器
+    optimizer_labeled = optim.Adam(model.parameters(), lr=0.1)  # 有标签数据的优化器
     optimizer_unlabeled = optim.Adam(model.parameters(), lr=0.005)  # 无标签数据的优化器
 
     # 定义学习率调度器
@@ -85,7 +85,7 @@ def main():
     scheduler_unlabeled = optim.lr_scheduler.StepLR(optimizer_unlabeled, step_size=5, gamma=0.1)
 
     # 训练过程
-    num_epochs = 20  # 设置训练的轮数为 10
+    num_epochs = 4  # 设置训练的轮数为 10
     for epoch in range(num_epochs):
         print(f"训练轮次(start): {epoch + 1} ")
 
