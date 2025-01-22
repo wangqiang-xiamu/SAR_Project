@@ -119,8 +119,95 @@ ResNet-18 和 MobileNetV2 都是广泛使用的深度学习模型架构，适用
 - **ResNet-18**：适合大规模数据集和计算资源丰富的环境，能够提供更高的精度和复杂特征提取能力。
 - **MobileNetV2**：适用于计算资源有限的场景，如移动端或嵌入式设备，在小数据集和轻量级任务中表现优异。
 
-选择哪种模型应根据具体应用场景、硬件资源及性能需求来决定。
+## 推荐训练参数
+针对万张左右数据集，以下是主要超参数推荐：
 
+### 批次大小（Batch Size）
+- 推荐值：32、64 或 128
+- 说明：根据 GPU 显存情况调整，通常 32 是通用选择。
+
+### 学习率（Learning Rate）
+- 推荐值：1e-3（Adam 优化器默认值）
+- 调整：若训练过程不稳定，可尝试减小到 1e-4 或 5e-5。
+
+### 学习率调度器（Learning Rate Scheduler）
+- 推荐策略：
+  - StepLR（每 5 个 epoch 学习率衰减 10%，`step_size=5, gamma=0.1`）
+  - CosineAnnealingLR（适用于长时间训练）
+
+### 优化器（Optimizer）
+- 推荐值：Adam 或 AdamW（适合大规模数据集）
+- 参数：`lr=1e-3`
+
+# 数据增强（Data Augmentation）
+
+此项目使用了常见的图像数据增强方法，旨在增强模型的鲁棒性和泛化能力。通过使用PyTorch的`torchvision.transforms`模块，我们对训练图像进行了以下增强处理：
+
+## 数据增强策略
+
+### 1. 随机旋转（RandomRotation）
+- **功能**：随机旋转图像，旋转角度在-30到30度之间。
+- **代码**：`transforms.RandomRotation(30)`
+- **作用**：此操作有助于模拟图像旋转不一致的情况，增强模型对旋转的鲁棒性。
+
+### 2. 随机裁剪并调整大小（RandomResizedCrop）
+- **功能**：随机裁剪图像并调整为指定大小（224x224）。
+- **代码**：`transforms.RandomResizedCrop(224)`
+- **作用**：此方法能够模拟不同尺度下的物体，并将图像调整为一致的大小（224x224），以适应深度学习模型的输入要求。
+
+### 3. 随机水平翻转（RandomHorizontalFlip）
+- **功能**：以50%的概率对图像进行随机水平翻转。
+- **代码**：`transforms.RandomHorizontalFlip()`
+- **作用**：水平翻转是图像增强中常用的技术，适用于物体左右对称的情况。
+
+### 4. 随机亮度和对比度调整（ColorJitter）
+- **功能**：随机调整图像的亮度和对比度，亮度和对比度的变化范围为0.5。
+- **代码**：`transforms.ColorJitter(brightness=0.5, contrast=0.5)`
+- **作用**：此操作有助于提高模型对不同光照条件下图像的适应性。
+
+### 5. 转换为张量（ToTensor）
+- **功能**：将PIL图像或NumPy数组转换为PyTorch的Tensor格式。
+- **代码**：`transforms.ToTensor()`
+- **作用**：这是PyTorch中的标准转换步骤，将图像数据转换为Tensor格式，并将像素值归一化到[0, 1]区间。
+
+### 6. 训练轮数（Epochs）
+- 推荐值：10-50
+- 说明：监控损失和准确率变化，必要时增加轮数。
+
+### 7. 伪标签阈值（Pseudo-label Threshold）
+- 推荐值：0.9 至 0.95
+
+### 8. 正则化（Regularization）
+- 权重衰减：`weight_decay=1e-4`
+- 说明：增加 Dropout 或 weight_decay 可改善泛化能力。
+
+### 9. GPU 显存使用
+- 调整 `batch_size` 以适配显存大小。
+- 使用 `pin_memory=True` 加速数据加载。
+- 显存不足时可采用 Gradient Accumulation。
+
+### 10 .模型架构
+- 推荐：ResNet18（基础模型）或更深的网络如 ResNet50/ResNet101。
+- 说明：根据任务复杂度选择合适的模型。
+
+### 11.分布式训练（Optional）
+- 若有多 GPU 可用，建议使用 `torch.nn.DataParallel` 或 `torch.nn.parallel.DistributedDataParallel` 加速训练。
+
+
+
+## 12. 完整的数据增强代码示例
+
+```python
+import torch
+from torchvision import transforms
+
+transform = transforms.Compose([
+    transforms.RandomRotation(30),  # 随机旋转图像
+    transforms.RandomResizedCrop(224),  # 随机裁剪并调整大小
+    transforms.RandomHorizontalFlip(),  # 随机水平翻转
+    transforms.ColorJitter(brightness=0.5, contrast=0.5),  # 随机调整亮度与对比度
+    transforms.ToTensor(),  # 转换为张量
+])
 
 ```bash
 pip install -r requirements.txt
