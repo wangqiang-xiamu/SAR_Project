@@ -50,8 +50,8 @@ def main():
     test_labels = [label for _, label in test_dataloader]  # 只提取标签
 
     # 打印标签的前几个元素进行检查
-    print("训练数据标签:", train_labels[:10])
-    print("测试数据标签:", test_labels[:10])
+    print("训练数据标签:\n", train_labels[:10])
+    print("测试数据标签:\n", test_labels[:10])
 
     # 加载ResNet18模型
     model =load_model(class_names,False)

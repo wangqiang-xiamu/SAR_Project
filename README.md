@@ -38,6 +38,9 @@ SAR 图像在获取过程中涉及雷达信号的反射和回波的解析，其�
 | 第3天下午    | 总结项目，整理文档，撰写 `README.md`               |
 
 ## 环境配置与依赖
+  ```bash
+        pip install -r requirements.txt
+  ```
 
 ## 安装依赖
 
@@ -210,7 +213,6 @@ transform = transforms.Compose([
     transforms.ToTensor(),  # 转换为张量
 ])
 
-```bash
-pip install -r requirements.txt
+
 
 
