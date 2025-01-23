@@ -12,7 +12,7 @@ app = Flask(__name__)
 class_names = ['2S1', 'BMP2', 'BRDM_2', 'BTR60', 'BTR70', 'D7', 'T62', 'T72', 'ZIL131', 'ZSU_23_4']
 #
 # 加载训练好的模型
-model = load_model(class_names, model_path='model_epoch_5.pth')
+model = load_model(class_names, model_path='../model_epoch_3_best.pth')
 #print(model)
 
 # 图像预处理
