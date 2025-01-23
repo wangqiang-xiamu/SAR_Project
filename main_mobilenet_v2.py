@@ -33,15 +33,18 @@ def main():
     # train_img_dir = './data/MSTAR/mstar-train-test'  # 有标签的训练数据
     # test_img_dir = './data/MSTAR/mstar-test-test'  # 测试数据
     # unlabeled_img_dir = './data/MSTAR/mstar-unlabeled'  # 无标签数据路径
-
     # 创建训练数据集和测试数据集
-    train_dataset = SARDataset(img_dir=train_img_dir, class_names=class_names, transform=transform)
-    test_dataset = SARDataset(img_dir=test_img_dir, class_names=class_names, transform=transform)
+    train_dataset = SARDataset(img_dir=train_img_dir, class_names=class_names, transform=transform
+                               , max_size=100)
+    test_dataset = SARDataset(img_dir=test_img_dir, class_names=class_names, transform=transform,
+                              max_size=100)
 
     # 创建无标签数据集
-    unlabeled_dataset = SARDataset(img_dir=unlabeled_img_dir, class_names=class_names, transform=transform, is_unlabeled=True)
+    unlabeled_dataset = SARDataset(img_dir=unlabeled_img_dir, class_names=class_names, transform=transform,
+                                   is_unlabeled=True,
+                                   max_size=1000)
 
-   #  # 创建数据加载器
+    # 创建数据加载器
     train_dataloader = DataLoader(train_dataset, batch_size=32, shuffle=False, num_workers=4, pin_memory=True)
     test_dataloader = DataLoader(test_dataset, batch_size=32, shuffle=False, num_workers=4, pin_memory=True)
     unlabeled_dataloader = DataLoader(unlabeled_dataset, batch_size=32, shuffle=False, num_workers=4, pin_memory=True)

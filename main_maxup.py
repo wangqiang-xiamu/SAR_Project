@@ -76,7 +76,7 @@ def main():
     scheduler_unlabeled = optim.lr_scheduler.StepLR(optimizer_unlabeled, step_size=5, gamma=0.1)
 
     # 训练过程
-    num_epochs = 3  # 设置训练的轮数为 10
+    num_epochs = 10  # 设置训练的轮数为 10
     # 设置test验证频率
     validation_frequency = 2  # 每5个epoch进行一次验证
     # 早停策略参数
