@@ -80,7 +80,7 @@ def main():
     # 设置test验证频率
     validation_frequency = 2  # 每5个epoch进行一次验证
     # 早停策略参数
-    patience = 5  # 如果验证损失在5个epoch内没有改善，提前停止训练
+    patience = 3  # 如果验证损失在5个epoch内没有改善，提前停止训练
     best_val_loss = np.inf  # 初始时设置为正无穷
     epochs_without_improvement = 0  # 跟踪验证损失未改善的轮数
 
