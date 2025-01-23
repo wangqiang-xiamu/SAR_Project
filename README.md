@@ -212,6 +212,7 @@ transform = transforms.Compose([
     transforms.ColorJitter(brightness=0.5, contrast=0.5),  # 随机调整亮度与对比度
     transforms.ToTensor(),  # 转换为张量
 ])
+```
 
 
 
