@@ -71,9 +71,9 @@ def main():
     # 训练过程
     num_epochs = 20  # 设置训练的轮数为 10
     # 设置test验证频率
-    validation_frequency = 5  # 每5个epoch进行一次验证
+    validation_frequency = 3  # 每5个epoch进行一次验证
     # 早停策略参数
-    patience = 5  # 如果验证损失在5个epoch内没有改善，提前停止训练
+    patience = 2  # 如果验证损失在5个epoch内没有改善，提前停止训练
     best_val_loss = np.inf  # 初始时设置为正无穷
     epochs_without_improvement = 0  # 跟踪验证损失未改善的轮数
     # threshold=0.95 是用于生成伪标签的一个阈值。具体来说，它的作用是在 FixMatch 方法中，
