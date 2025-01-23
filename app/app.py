@@ -1,6 +1,6 @@
 import torch
 from torchvision import transforms
-from flask import Flask, request, jsonify,render_template
+from flask import Flask, request,render_template
 from PIL import Image
 import os
 from models.network import load_model
