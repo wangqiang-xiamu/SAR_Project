@@ -1,15 +1,11 @@
 import os
 from PIL import Image
 from torch.utils.data import Dataset
+import random
 
-# 无标签数据集：通过设置 is_unlabeled=True，__getitem__ 方法只返回图像，不返回标签。
-# 有标签数据集：__getitem__ 方法返回图像和标签，适用于训练。
-# 路径和文件夹结构：
-# 对于有标签数据集，图像应存放在 mstar-train 中的各个类文件夹下。
-# 对于无标签数据集，图像应存放在 mstar-unlabeled 中的类文件夹下。
 
 class SARDataset(Dataset):
-    def __init__(self, img_dir, class_names, transform=None, is_unlabeled=False, max_size=None):
+    def __init__(self, img_dir, class_names, transform=None, is_unlabeled=False, max_size=100):
         """
         初始化数据集类
         :param img_dir: 数据集所在的根目录
@@ -28,31 +24,38 @@ class SARDataset(Dataset):
         self.img_paths = []
         self.labels = []
 
-        # 加载图像数据
+        # 创建一个字典来存储每个类别的图像路径
+        self.class_images = {class_name: [] for class_name in self.class_names}
+
+        # 遍历类别文件夹，加载所有图像路径
         for label, class_name in enumerate(self.class_names):
             class_dir = os.path.join(self.img_dir, class_name)
             if os.path.isdir(class_dir):
                 for filename in os.listdir(class_dir):
                     img_path = os.path.join(class_dir, filename)
                     if img_path.lower().endswith((".jpg", ".png", ".jpeg")):
-                        self.img_paths.append(img_path)
-                        if not self.is_unlabeled:
-                            self.labels.append(label)
-                    if self.max_size and len(self.img_paths) >= self.max_size:
-                        break
-            if self.max_size and len(self.img_paths) >= self.max_size:
-                break
+                        self.class_images[class_name].append(img_path)
+
+        # 计算每个类别应加载的图像数量
+        total_classes = len(self.class_images)  # 类别总数
+        images_per_class = self.max_size // total_classes  # 每个类别分配的图像数量
+
+        # 确保每个类别加载的图像数量为 10 或者该类别图像数量
+        for class_name, img_paths in self.class_images.items():
+            sampled_paths = random.sample(img_paths, min(images_per_class, len(img_paths)))  # 采样每个类别的图像
+            self.img_paths.extend(sampled_paths)  # 将采样后的图像路径添加到 img_paths 中
+            self.labels.extend([self.class_names.index(class_name)] * len(sampled_paths))  # 添加对应的标签
 
         if len(self.img_paths) == 0:
             raise ValueError(f"Dataset is empty. No images found in {self.img_dir}")
 
-        print(f"Found {len(self.img_paths)} images in {self.img_dir}")
+        print(f"Found {len(self.img_paths)} images in {self.img_dir} with balanced classes.")
 
     def __len__(self):
         """
         返回数据集的大小（限制为 max_size）
         """
-        return min(len(self.img_paths), self.max_size) if self.max_size else len(self.img_paths)
+        return len(self.img_paths)
 
     def __getitem__(self, idx):
         """
@@ -60,13 +63,13 @@ class SARDataset(Dataset):
         :param idx: 索引
         :return: 图像和标签（或仅图像，如果是无标签数据集）
         """
-        img_path = self.img_paths[idx]
-        image = Image.open(img_path)  # 加载图片
+        img_path = self.img_paths[idx]  # 获取指定索引的图像路径
+        image = Image.open(img_path)  # 使用 PIL 打开图像
         if self.transform:
-            image = self.transform(image)
+            image = self.transform(image)  # 如果指定了转换函数，则应用转换
 
         if self.is_unlabeled:
-            return image  # 无标签数据集只返回图像
+            return image  # 如果是无标签数据集，仅返回图像
         else:
-            label = self.labels[idx]
-            return image, label  # 有标签数据集返回图像和标签
+            label = self.labels[idx]  # 获取对应的标签
+            return image, label  # 返回图像和标签
