@@ -19,7 +19,6 @@ transform = transforms.Compose([
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # 预训练模型的标准化
 ])
 
-
 # 加载模型函数
 def load_trained_model(model_path='../model_epoch_3_best.pth'):
     model = load_model(class_names, False)

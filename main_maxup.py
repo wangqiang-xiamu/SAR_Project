@@ -31,6 +31,12 @@ def main():
     # 创建训练数据集和测试数据集
     train_dataset = SARDataset(img_dir=train_img_dir, class_names=class_names, transform=transform
                                ,max_size=100)
+
+    # 遍历 train_dataset 打印标签
+    for idx in range(len(train_dataset)):
+        image, label = train_dataset[idx]  # 获取图像和标签
+        print(f"Image {idx}: Label {label}")
+
     # 查看数据集中的图片数量
     print(f"Dataset size（train_dataset）: {len(train_dataset)}")
     test_dataset = SARDataset(img_dir=test_img_dir, class_names=class_names, transform=transform
@@ -38,7 +44,7 @@ def main():
 
     # 创建无标签数据集
     unlabeled_dataset = SARDataset(img_dir=unlabeled_img_dir, class_names=class_names, transform=transform, is_unlabeled=True
-                                   ,max_size=1000)
+                                   ,max_size=100)
 
    #  # 创建数据加载器
     train_dataloader = DataLoader(train_dataset, batch_size=32, shuffle=False, num_workers=4, pin_memory=True)
@@ -65,7 +71,7 @@ def main():
     #使用 Adam 优化器，学习率为 0.001
     # optimizer = optim.Adam(model.parameters(), lr=0.001)  # Adam优化器
     # 创建两个不同的优化器，分别对应有标签和无标签数据的不同学习率
-    optimizer_labeled = optim.Adam(model.parameters(), lr=0.1)  # 有标签数据的优化器
+    optimizer_labeled = optim.Adam(model.parameters(), lr=1)  # 有标签数据的优化器
     optimizer_unlabeled = optim.Adam(model.parameters(), lr=0.005)  # 无标签数据的优化器
 
     # 定义学习率调度器
