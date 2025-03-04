@@ -88,8 +88,11 @@ python -m torch.distributed.launch
 ### 📊 监控训练进度
 
 使用 TensorBoard 可视化训练日志：
-```
+
 tensorboard --logdir=<your_out_dir>
+
+```bash
+tensorboard --logdir==moudle/FixMatch-pytorch-master/outs
 ```
 
 ---
