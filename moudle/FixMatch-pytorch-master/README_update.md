@@ -41,6 +41,10 @@
 python train.py --dataset cifar10 --num-labeled 4000 --arch wideresnet --batch-size 64 --lr 0.03 --expand-labels --seed 5 --out results/cifar10@4000.5
 ```
 
+```
+python train.py --dataset cifar10 --num-labeled 40 --arch wideresnet --batch-size 64 --lr 0.03 --expand-labels --seed 5 --out results/cifar10@4000.5
+```
+
 #### ✅ 在 CIFAR-100（10000 条标注数据）上训练模型（使用 DistributedDataParallel）
 
 ```
@@ -88,11 +92,15 @@ python -m torch.distributed.launch
 ### 📊 监控训练进度
 
 使用 TensorBoard 可视化训练日志：
+在 TensorBoard 中，检查以下内容：
+Scalars 选项卡：查看 train/loss、train/accuracy、test/loss 和 test/accuracy 的曲线。
+Graphs 选项卡：如果记录了模型结构，可以查看计算图。
+Histograms 选项卡：如果记录了权重或梯度分布，可以查看直方图。
 
 tensorboard --logdir=<your_out_dir>
 
 ```bash
-tensorboard --logdir==moudle/FixMatch-pytorch-master/outs
+tensorboard --logdir=results/cifar10@4000.5
 ```
 
 ---
