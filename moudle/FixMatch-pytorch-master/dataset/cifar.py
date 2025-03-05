@@ -177,6 +177,13 @@ class CIFAR100SSL(datasets.CIFAR100):
 
         return img, target
 
-
-DATASET_GETTERS = {'cifar10': get_cifar10,
-                   'cifar100': get_cifar100}
+#
+# DATASET_GETTERS = {'cifar10': get_cifar10,
+#                    'cifar100': get_cifar100}
+#
+from .mstar import get_mstar
+DATASET_GETTERS = {
+    'cifar10': get_cifar10,
+    'cifar100': get_cifar100,
+    'mstar': get_mstar,  # 添加MSTAR数据集的加载函数
+}

@@ -37,6 +37,10 @@
 ### 🏋️ 训练
 
 #### ✅ 在 CIFAR-10（4000 条标注数据）上训练模型
+
+```
+python train.py --dataset mstar --num-labeled 4000 --arch wideresnet --batch-size 64 --lr 0.03 --expand-labels --seed 5 --out results/cifar10@4000.5
+```
 ```
 python train.py --dataset cifar10 --num-labeled 4000 --arch wideresnet --batch-size 64 --lr 0.03 --expand-labels --seed 5 --out results/cifar10@4000.5
 ```

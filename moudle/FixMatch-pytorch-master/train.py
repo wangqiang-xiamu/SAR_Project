@@ -100,8 +100,11 @@ def main():
                         help='id(s) for CUDA_VISIBLE_DEVICES')
     parser.add_argument('--num-workers', type=int, default=4,
                         help='number of workers')
+    # parser.add_argument('--dataset', default='cifar10', type=str,
+    #                     choices=['cifar10', 'cifar100'],
+    #                     help='dataset name')
     parser.add_argument('--dataset', default='cifar10', type=str,
-                        choices=['cifar10', 'cifar100'],
+                        choices=['cifar10', 'cifar100', 'mstar'],  # 添加MSTAR数据集选项
                         help='dataset name')
     parser.add_argument('--num-labeled', type=int, default=4000,
                         help='number of labeled data')
@@ -237,6 +240,16 @@ def main():
             args.model_cardinality = 8
             args.model_depth = 29
             args.model_width = 64
+
+    elif args.dataset == 'mstar':
+        args.num_classes = 10  # 根据MSTAR数据集的类别数调整
+        if args.arch == 'wideresnet':
+            args.model_depth = 28
+            args.model_width = 2
+        elif args.arch == 'resnext':
+            args.model_cardinality = 4
+            args.model_depth = 28
+            args.model_width = 4
 
     if args.local_rank not in [-1, 0]:
         torch.distributed.barrier()
