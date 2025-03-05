@@ -370,6 +370,9 @@ def train(args, labeled_trainloader, unlabeled_trainloader, test_loader,
     labeled_iter = iter(labeled_trainloader)
     unlabeled_iter = iter(unlabeled_trainloader)
 
+    sample = next(unlabeled_iter)
+    print("Sample from unlabeled_iter:", sample)
+
     model.train()
     for epoch in range(args.start_epoch, args.epochs):
         print("start")
