@@ -37,23 +37,6 @@
 ### 🏋️ 训练
 
 #### ✅ 在 CIFAR-10（4000 条标注数据）上训练模型
-tree
-./data/
-  ├── labeled/
-  │   ├── class1/
-  │   │   ├── image1.jpeg
-  │   │   ├── image2.jpeg
-  │   │   └── ...
-  │   ├── class2/
-  │   └── ...
-  ├── unlabeled/
-  │   ├── image1.jpeg
-  │   ├── image2.jpeg
-  │   └── ...
-  └── test/
-      ├── class1/
-      ├── class2/
-      └── ...
 ```
 python train.py --dataset mstar --num-labeled 4000 --arch wideresnet --batch-size 64 --lr 0.03 --expand-labels --seed 5 --out results/mstar
 ```
@@ -63,7 +46,7 @@ python train.py --dataset cifar10 --num-labeled 4000 --arch wideresnet --batch-s
 
 test
 ```commandline
-python train.py --dataset mstar --num-labeled 4000 --out ./results/mstar
+python train.py --dataset mstar --num-labeled 10 --out ./results/mstar
 ```
 ```
 python train.py --dataset cifar10 --num-labeled 10 --arch wideresnet --batch-size 2 --lr 0.03 --expand-labels --seed 5 --out results/cifar10@4000.5
